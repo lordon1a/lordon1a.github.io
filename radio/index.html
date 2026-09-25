@@ -34,7 +34,7 @@
       <button id="phaseBtn" class="chip" type="button">vakit</button>
     </header>
 
-    <p id="hint" class="hint">plağa dokun · çal / durdur</p>
+    <p id="hint" class="hint">plağa dokun · canlı yayına dön</p>
     <div id="fx" class="fx" aria-hidden="true"></div>
 
     <section class="deck glass" aria-label="şu an çalıyor">
@@ -42,6 +42,7 @@
         <span class="eyebrow">şu an çalıyor</span>
         <a id="title" class="title" target="_blank" rel="noopener">—</a>
         <span class="meta">öneren <b id="by">—</b></span>
+        <span id="nowNote" class="dedication" hidden></span>
       </div>
       <div class="controls">
         <div class="votes">
@@ -81,6 +82,7 @@
       <form id="addForm" class="row-form">
         <input id="addInput" placeholder="youtube linki yapıştır…" autocomplete="off">
         <button type="submit">ekle</button>
+        <input id="addNote" maxlength="80" placeholder="not ekle (isteğe bağlı) · ör. Yiğit'e gelsin 🎧" autocomplete="off">
       </form>
       <ol id="queueList" class="queue-list"></ol>
     </div>

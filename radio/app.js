@@ -177,9 +177,13 @@ function sortedQueue() {
 function pickNext(exclude) {
   const q = sortedQueue()[0];
   if (q) return { ...q, qid: q.id };
-  const pool = CONFIG.fallbackPlaylist.filter((x) => x.videoId !== exclude);
-  if (!pool.length) return null;
-  return { ...pool[Math.floor(Math.random() * pool.length)], by: 'radyo' };
+  const list = CONFIG.fallbackPlaylist;
+  if (!list.length) return null;
+  // Sıralı dönüş: son çalan listeden ise bir sonraki; kuyruk şarkısından sonra kaldığı yerden.
+  const here = list.findIndex((x) => x.videoId === exclude);
+  const last = typeof S.state?.plIndex === 'number' ? S.state.plIndex : -1;
+  const index = ((here >= 0 ? here : last) + 1) % list.length;
+  return { ...list[index], by: 'radyo', plIndex: index };
 }
 
 async function next(expected) {
@@ -188,13 +192,14 @@ async function next(expected) {
   if (!item && expected === null) return; // çalacak bir şey yok
   S.advancing = true;
   try {
+    const carry = typeof item?.plIndex === 'number' ? item.plIndex : S.state?.plIndex;
     const state = item
-      ? { videoId: item.videoId, title: item.title || item.videoId, by: item.by || 'anon', startedAt: B.now() }
+      ? { videoId: item.videoId, title: item.title || item.videoId, by: item.by || 'anon', startedAt: B.now(), ...(item.note ? { note: item.note } : {}), ...(typeof carry === 'number' ? { plIndex: carry } : {}) }
       : null;
     const ok = await B.advance(expected, state);
     if (ok && item) {
       if (item.qid) B.removeFromQueue(item.qid);
-      B.sendChat({ system: true, text: '♪ ' + state.title });
+      B.sendChat({ system: true, text: '♪ ' + state.title + (state.note ? ' · 🎧 ' + state.note : '') });
     }
   } catch (e) {
     console.error(e);
@@ -209,7 +214,7 @@ async function next(expected) {
 function loadYouTube() {
   window.onYouTubeIframeAPIReady = () => {
     S.player = new YT.Player('yt', {
-      playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, modestbranding: 1 },
+      playerVars: { autoplay: 1, controls: 0, disablekb: 1, rel: 0, playsinline: 1, modestbranding: 1 },
       events: {
         onReady: () => {
           S.playerReady = true;
@@ -260,16 +265,22 @@ function sync() {
   }
 }
 
-// Plağa tıklanınca çal / durdur (sadece bu dinleyici için)
+// Duraklatma yok: plağa tıklamak yalnızca canlı yayına hizalar.
 addEventListener('radio:toggle', () => {
   if (!S.playerReady || !S.state) return toast(S.state ? 'Oynatıcı hazırlanıyor…' : 'Şu an çalan bir şey yok');
-  if (S.player.getPlayerState() === YT.PlayerState.PLAYING) {
-    S.player.pauseVideo();
-  } else {
-    S.player.seekTo(elapsed(), true); // canlı yayına geri dön
+  S.player.seekTo(elapsed(), true); // canlı yayına dön
+  S.player.playVideo();
+});
+
+// Nöbetçi: şarkı varken oynatıcı duraklatılmış kalmasın.
+setInterval(() => {
+  if (!S.playerReady || !S.joined || !S.state) return;
+  if (document.visibilityState !== 'visible') return;
+  if (S.player.getPlayerState() === YT.PlayerState.PAUSED) {
+    S.player.seekTo(elapsed(), true);
     S.player.playVideo();
   }
-});
+}, 3000);
 
 // Pikap kolu şarkının neresinde olduğumuzu göstersin
 setInterval(() => {
@@ -315,6 +326,9 @@ function renderNow() {
   title.textContent = st ? st.title : '—';
   if (st) title.href = ytUrl(st.videoId); else title.removeAttribute('href');
   $('#by').textContent = st ? st.by : '—';
+  const noteEl = $('#nowNote');
+  noteEl.hidden = !st?.note;
+  noteEl.textContent = st?.note ? '🎧 ' + st.note : '';
   if ((st?.videoId || null) !== S.shownId) {
     S.shownId = st?.videoId || null;
     fire('radio:track', { videoId: S.shownId, title: st?.title || '' });
@@ -351,7 +365,7 @@ function renderQueue() {
       <button data-v="1" class="${mine === 1 ? 'on' : ''}" title="yukarı">▲</button>
       <span class="score">${sum(it.votes)}</span>
       <button data-v="-1" class="${mine === -1 ? 'on' : ''}" title="aşağı">▼</button>
-      <span class="q-title" title="${esc(it.title)}">${esc(it.title)} <span class="q-by">· ${esc(it.by)}</span></span>
+      <span class="q-title" title="${esc(it.title)}">${esc(it.title)} <span class="q-by">· ${esc(it.by)}</span>${it.note ? ` <span class="q-note">🎧 ${esc(it.note)}</span>` : ''}</span>
       ${canRemove ? '<button data-del title="kaldır">✕</button>' : ''}
     </li>`;
   }).join('');
@@ -486,12 +500,17 @@ function bindUI() {
   $('#addForm').onsubmit = async (e) => {
     e.preventDefault();
     const input = $('#addInput');
+    const noteInput = $('#addNote');
     const id = parseVideoId(input.value);
     if (!id) return toast('Geçerli bir YouTube linki değil');
     if (S.queue.some((q) => q.videoId === id) || S.state?.videoId === id) return toast('Bu şarkı zaten listede');
+    const note = (noteInput?.value || '').trim().slice(0, 80);
     input.value = '';
+    if (noteInput) noteInput.value = '';
     const title = await fetchTitle(id);
-    B.addToQueue({ videoId: id, title, by: S.profile?.name || 'anon', votes: { [B.uid]: 1 } });
+    const item = { videoId: id, title, by: S.profile?.name || 'anon', votes: { [B.uid]: 1 } };
+    if (note) item.note = note;
+    B.addToQueue(item);
     toast('Kuyruğa eklendi ♪');
   };
 

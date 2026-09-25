@@ -356,3 +356,9 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* ---------- şarkı ithafı (not) ---------- */
+.dedication { font-size: 12px; color: var(--accent); }
+#addForm { flex-wrap: wrap; }
+#addNote { flex: 1 0 100%; }
+.q-note { color: var(--accent); font-size: 11px; }
