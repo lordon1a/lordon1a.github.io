@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Radyo</title>
+  <title>Sunshine Radio</title>
   <meta name="description" content="Birlikte dinlenen YouTube radyosu, sohbet ve şarkı önerileri.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rubik+Mono+One&family=Audiowide&family=Archivo+Black&family=Fredoka:wght@600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rubik+Mono+One&family=Audiowide&family=Archivo+Black&family=Fredoka:wght@600&family=Righteous&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
 </head>
 <body>
   <div class="bg" aria-hidden="true"></div>
@@ -16,7 +17,7 @@
   <main class="stage">
     <section class="card player-card">
       <header class="card-head">
-        <span class="brand-mark" aria-hidden="true">◆</span>
+        <span id="brandMark" class="brand-mark" aria-hidden="true">☀</span>
         <h1 id="brand"></h1>
         <span id="live" class="live">● SESSİZ</span>
       </header>
@@ -51,7 +52,10 @@
 
       <footer class="card-foot">
         <span id="listeners">0 dinleyici</span>
-        <button id="themeBtn" class="link" type="button">tema</button>
+        <span class="foot-btns">
+          <button id="phaseBtn" class="link" type="button">vakit</button>
+          <button id="themeBtn" class="link" type="button">tema</button>
+        </span>
       </footer>
       <p class="fine">kâr amacı gütmez · parçanın adına tıkla, youtube'da dinle</p>
     </section>
@@ -110,5 +114,6 @@
   <div id="toast" class="toast" role="status"></div>
 
   <script type="module" src="app.js"></script>
+  <script type="module" src="sun.js"></script>
 </body>
 </html>

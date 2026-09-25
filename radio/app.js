@@ -1,6 +1,10 @@
 import { CONFIG } from './config.js';
 
-const THEMES = { amber: 'amber', neon: 'neon', minimal: 'minimal', lofi: 'lo-fi' };
+const THEMES = { sunshine: 'sunshine', amber: 'amber', neon: 'neon', minimal: 'minimal', lofi: 'lo-fi' };
+// Sunshine temasında vakitler: saat aralığı ve isim
+const PHASES = { sabah: 'sabah', ogle: 'öğle', aksam: 'akşam', gece: 'gece' };
+const PHASE_ICON = { sabah: '🌅', ogle: '☀', aksam: '🌇', gece: '☾' };
+const fire = (name, detail) => dispatchEvent(new CustomEvent(name, { detail }));
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -142,6 +146,7 @@ const S = {
   volume: store.get('volume', 70),
   profile: store.get('profile', null),
   theme: store.get('theme', CONFIG.defaultTheme),
+  phase: store.get('phase', 'auto'), // 'auto' ya da PHASES anahtarlarından biri
 };
 let B; // backend
 
@@ -216,6 +221,7 @@ function loadYouTube() {
         onStateChange: (e) => {
           const st = S.state;
           $('#disc').classList.toggle('spin', e.data === YT.PlayerState.PLAYING);
+          fire('radio:playing', e.data === YT.PlayerState.PLAYING);
           if (e.data === YT.PlayerState.PLAYING) {
             S.errors = 0;
             const d = S.player.getDuration();
@@ -252,6 +258,7 @@ function sync() {
   if (st.duration && elapsed() > st.duration + 3) return next(st.videoId);
   if (S.loadedId !== st.videoId) {
     S.loadedId = st.videoId;
+    fire('radio:pulse', 1);
     S.player.loadVideoById({ videoId: st.videoId, startSeconds: elapsed() });
   }
 }
@@ -267,12 +274,29 @@ setInterval(() => {
 /* =========================================================
    Arayüz
    ========================================================= */
+function phaseByClock(d = new Date()) {
+  const h = d.getHours();
+  if (h >= 5 && h < 11) return 'sabah';
+  if (h >= 11 && h < 17) return 'ogle';
+  if (h >= 17 && h < 21) return 'aksam';
+  return 'gece';
+}
+
+function applyPhase() {
+  const p = PHASES[S.phase] ? S.phase : phaseByClock();
+  document.documentElement.dataset.phase = p;
+  $('#phaseBtn').textContent = 'vakit: ' + (S.phase === 'auto' ? `otomatik (${PHASES[p]})` : PHASES[p]);
+  $('#brandMark').textContent = S.theme === 'sunshine' ? PHASE_ICON[p] : '◆';
+}
+setInterval(applyPhase, 60000);
+
 function applyTheme(name) {
-  if (!THEMES[name]) name = 'amber';
+  if (!THEMES[name]) name = 'sunshine';
   S.theme = name;
   document.documentElement.dataset.theme = name;
   $('#themeBtn').textContent = 'tema: ' + THEMES[name];
   store.set('theme', name);
+  applyPhase();
   document.querySelectorAll('#themePick button').forEach((b) => b.classList.toggle('on', b.dataset.theme === name));
 }
 
@@ -443,6 +467,13 @@ function bindUI() {
     applyTheme(keys[(keys.indexOf(S.theme) + 1) % keys.length]);
   };
 
+  $('#phaseBtn').onclick = () => {
+    const keys = ['auto', ...Object.keys(PHASES)];
+    S.phase = keys[(keys.indexOf(S.phase) + 1) % keys.length];
+    store.set('phase', S.phase);
+    applyPhase();
+  };
+
   $('#queueToggle').onclick = () => {
     const q = $('#queue');
     q.hidden = !q.hidden;
@@ -499,7 +530,7 @@ function bindUI() {
 /* ---------- Başlat ---------- */
 async function main() {
   $('#brand').textContent = CONFIG.siteName;
-  document.title = CONFIG.siteName.replace('/', ' ');
+  document.title = CONFIG.siteName;
   if (CONFIG.backgroundImage) document.documentElement.style.setProperty('--bg-image', `url("${CONFIG.backgroundImage}")`);
   applyTheme(S.theme);
   bindUI();
@@ -527,7 +558,7 @@ async function main() {
     sync();
   });
   B.onChat(addMessage, (id) => document.querySelector(`.msg[data-id="${CSS.escape(id)}"]`)?.remove());
-  B.onReaction((r) => floatEmoji(r.emoji));
+  B.onReaction((r) => { floatEmoji(r.emoji); fire('radio:pulse', 0.35); });
 
   renderMe();
   loadYouTube();

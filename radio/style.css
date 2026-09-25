@@ -1,6 +1,60 @@
 /* ---------- Temalar ----------
    Yeni tema eklemek için bir blok kopyala, adını değiştir ve app.js içindeki THEMES listesine ekle. */
+/* Sunshine: güneş teması. Renkler günün vaktine göre değişir (data-phase: sabah / ogle / aksam / gece). */
 :root,
+[data-theme="sunshine"] {
+  --bg: #1a0e16;
+  --panel: rgba(30, 14, 20, .66);
+  --panel-2: rgba(66, 30, 30, .7);
+  --line: rgba(255, 190, 110, .28);
+  --text: #fff1dc;
+  --muted: #d0a888;
+  --accent: #ffb627;
+  --accent-ink: #2a1206;
+  --nick-sat: 80%;
+  --nick-light: 72%;
+  --font-display: 'Righteous', system-ui, sans-serif;
+  --font-body: 'Space Mono', ui-monospace, monospace;
+  --radius: 14px;
+  --sky: linear-gradient(to bottom, #221029 0%, #c4424a 55%, #ff9a45 78%, #2a0f1c 79%, #0c0712 100%);
+}
+[data-theme="sunshine"][data-phase="sabah"] {
+  --bg: #f6d9c4;
+  --panel: rgba(255, 248, 238, .72);
+  --panel-2: rgba(255, 234, 214, .88);
+  --line: rgba(160, 80, 30, .22);
+  --text: #3a1d0c;
+  --muted: #8a5a3a;
+  --accent: #e2600b;
+  --accent-ink: #fff8ef;
+  --nick-light: 38%;
+  --sky: linear-gradient(to bottom, #6b9ae6 0%, #f8a3a8 55%, #ffc08e 78%, #9b93bb 79%, #253858 100%);
+}
+[data-theme="sunshine"][data-phase="ogle"] {
+  --bg: #cfe6fb;
+  --panel: rgba(250, 253, 255, .74);
+  --panel-2: rgba(226, 239, 252, .9);
+  --line: rgba(30, 70, 120, .2);
+  --text: #0f2238;
+  --muted: #56708f;
+  --accent: #e98500;
+  --accent-ink: #ffffff;
+  --nick-light: 36%;
+  --sky: linear-gradient(to bottom, #2560c4 0%, #74b6f3 55%, #c6e6fc 78%, #66a3d6 79%, #083466 100%);
+}
+[data-theme="sunshine"][data-phase="gece"] {
+  --bg: #04060f;
+  --panel: rgba(10, 14, 34, .68);
+  --panel-2: rgba(26, 32, 64, .78);
+  --line: rgba(170, 190, 255, .22);
+  --text: #e6ebff;
+  --muted: #8f99c6;
+  --accent: #ffd67a;
+  --accent-ink: #151a33;
+  --nick-light: 76%;
+  --sky: linear-gradient(to bottom, #02030b 0%, #10132f 60%, #22264d 78%, #151a38 79%, #020308 100%);
+}
+
 [data-theme="amber"] {
   --bg: #120d05;
   --glow-1: rgba(255, 190, 40, .16);
@@ -87,13 +141,26 @@ button { cursor: pointer; }
 a { color: inherit; }
 
 .bg {
-  position: fixed; inset: 0; z-index: -1;
+  position: fixed; inset: 0; z-index: -2;
   background:
     radial-gradient(60% 50% at 25% 15%, var(--glow-1), transparent 70%),
     radial-gradient(50% 60% at 80% 85%, var(--glow-2), transparent 70%),
     var(--bg-image, none) center / cover no-repeat,
     var(--bg);
 }
+[data-theme="sunshine"] .bg { background: var(--sky); } /* WebGL yoksa yedek */
+.sun-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; }
+[data-theme="sunshine"] .stage { padding-top: 30vh; }
+[data-theme="sunshine"] .chat { backdrop-filter: blur(10px); }
+[data-theme="sunshine"] .disc {
+  background: radial-gradient(circle, #fff6d0 0 20%, var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #ff4d1a) 68%, transparent 70%);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+[data-theme="sunshine"] .disc.spin { animation: glow 2.4s ease-in-out infinite; }
+@keyframes glow { 50% { transform: scale(1.08); box-shadow: 0 0 40px var(--accent); } }
+:root:not([data-theme="sunshine"]) #phaseBtn { display: none; }
+.card, .chat, body { transition: background-color .8s, color .8s, border-color .8s; }
+
 .bg::after { /* görselin üstünde okunabilirlik için hafif karartma */
   content: ""; position: absolute; inset: 0;
   background: color-mix(in srgb, var(--bg) 35%, transparent);
@@ -188,8 +255,9 @@ a { color: inherit; }
 .vol input { flex: 1; accent-color: var(--accent); }
 .vol b { font-family: var(--font-display); color: var(--accent); min-width: 3ch; text-align: right; }
 
+.foot-btns { display: flex; gap: 14px; }
 .card-foot {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
   margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line);
 }
 
@@ -312,4 +380,5 @@ a { color: inherit; }
   .card-head h1 { font-size: 17px; }
   .chat { width: 100%; height: 75vh; border-left: 0; border-top: 1px solid var(--line); }
   .disc { display: none; }
+  [data-theme="sunshine"] .stage { padding-top: 27vh; }
 }

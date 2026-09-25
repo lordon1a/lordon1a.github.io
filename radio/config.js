@@ -1,10 +1,11 @@
 // Radyo ayarları — burayı düzenleyerek siteyi kendine göre ayarlayabilirsin.
 export const CONFIG = {
   // Kartın başlığında görünen isim
-  siteName: 'GULDAL/RADYO',
+  siteName: 'SUNSHINE RADIO',
 
-  // Varsayılan tema: 'amber' | 'neon' | 'minimal' | 'lofi'  (renkler style.css içinde)
-  defaultTheme: 'amber',
+  // Varsayılan tema: 'sunshine' | 'amber' | 'neon' | 'minimal' | 'lofi'  (renkler style.css içinde)
+  // 'sunshine' temasında sahne ziyaretçinin saatine göre sabah / öğle / akşam / gece olur.
+  defaultTheme: 'sunshine',
 
   // Arka plan görseli (isteğe bağlı). Görseli radio/ klasörüne koyup adını yaz: 'arkaplan.jpg'
   backgroundImage: '',
@@ -34,8 +35,8 @@ export const CONFIG = {
   skipRatio: 0.5,
 
   // Sohbetteki hızlı tepki emojileri
-  reactions: ['🔥', '❤️', '😂', '👏', '🎧'],
+  reactions: ['☀️', '🔥', '❤️', '😂', '🎧'],
 
   // Katılırken seçilebilecek avatarlar
-  avatars: ['🦁', '🐱', '🐸', '🦊', '🐼', '👽', '🤖', '🐙', '🦄', '🍋', '🎸', '💀'],
+  avatars: ['🌞', '🌻', '🦁', '🐱', '🦊', '🐼', '🐙', '🦄', '🍋', '🍉', '🎸', '😎'],
 };
