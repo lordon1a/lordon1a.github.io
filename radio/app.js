@@ -1,9 +1,8 @@
 import { CONFIG } from './config.js';
 
-const THEMES = { sunshine: 'sunshine', amber: 'amber', neon: 'neon', minimal: 'minimal', lofi: 'lo-fi' };
-// Sunshine temasında vakitler: saat aralığı ve isim
+// Günün vakitleri (renkler style.css ve scene.js içinde)
 const PHASES = { sabah: 'sabah', ogle: 'öğle', aksam: 'akşam', gece: 'gece' };
-const PHASE_ICON = { sabah: '🌅', ogle: '☀', aksam: '🌇', gece: '☾' };
+const PHASE_ICON = { sabah: '☀', ogle: '☀', aksam: '☀', gece: '☾' };
 const fire = (name, detail) => dispatchEvent(new CustomEvent(name, { detail }));
 
 const $ = (s) => document.querySelector(s);
@@ -145,7 +144,6 @@ const S = {
   lastSent: 0,
   volume: store.get('volume', 70),
   profile: store.get('profile', null),
-  theme: store.get('theme', CONFIG.defaultTheme),
   phase: store.get('phase', 'auto'), // 'auto' ya da PHASES anahtarlarından biri
 };
 let B; // backend
@@ -220,7 +218,6 @@ function loadYouTube() {
         },
         onStateChange: (e) => {
           const st = S.state;
-          $('#disc').classList.toggle('spin', e.data === YT.PlayerState.PLAYING);
           fire('radio:playing', e.data === YT.PlayerState.PLAYING);
           if (e.data === YT.PlayerState.PLAYING) {
             S.errors = 0;
@@ -263,6 +260,24 @@ function sync() {
   }
 }
 
+// Plağa tıklanınca çal / durdur (sadece bu dinleyici için)
+addEventListener('radio:toggle', () => {
+  if (!S.playerReady || !S.state) return toast(S.state ? 'Oynatıcı hazırlanıyor…' : 'Şu an çalan bir şey yok');
+  if (S.player.getPlayerState() === YT.PlayerState.PLAYING) {
+    S.player.pauseVideo();
+  } else {
+    S.player.seekTo(elapsed(), true); // canlı yayına geri dön
+    S.player.playVideo();
+  }
+});
+
+// Pikap kolu şarkının neresinde olduğumuzu göstersin
+setInterval(() => {
+  const st = S.state;
+  const d = st?.duration || (S.playerReady && S.loadedId === st?.videoId ? S.player.getDuration() : 0);
+  fire('radio:progress', st && d > 0 ? Math.min(elapsed() / d, 1) : 0);
+}, 500);
+
 // Herkes aynı saniyede kalsın diye ara ara kayma düzeltmesi
 setInterval(() => {
   if (!S.playerReady || !S.state || S.loadedId !== S.state.videoId) return;
@@ -286,29 +301,24 @@ function applyPhase() {
   const p = PHASES[S.phase] ? S.phase : phaseByClock();
   document.documentElement.dataset.phase = p;
   $('#phaseBtn').textContent = 'vakit: ' + (S.phase === 'auto' ? `otomatik (${PHASES[p]})` : PHASES[p]);
-  $('#brandMark').textContent = S.theme === 'sunshine' ? PHASE_ICON[p] : '◆';
+  document.querySelectorAll('.brand-mark').forEach((m) => { m.textContent = PHASE_ICON[p]; });
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
 }
 setInterval(applyPhase, 60000);
-
-function applyTheme(name) {
-  if (!THEMES[name]) name = 'sunshine';
-  S.theme = name;
-  document.documentElement.dataset.theme = name;
-  $('#themeBtn').textContent = 'tema: ' + THEMES[name];
-  store.set('theme', name);
-  applyPhase();
-  document.querySelectorAll('#themePick button').forEach((b) => b.classList.toggle('on', b.dataset.theme === name));
-}
 
 function renderNow() {
   const st = S.state;
   $('#empty').hidden = !!st;
-  $('#live').textContent = st ? '● YAYINDA' : '● SESSİZ';
+  $('#live').textContent = st ? 'yayında' : 'sessiz';
   $('#live').classList.toggle('on', !!st);
   const title = $('#title');
   title.textContent = st ? st.title : '—';
   if (st) title.href = ytUrl(st.videoId); else title.removeAttribute('href');
   $('#by').textContent = st ? st.by : '—';
+  if ((st?.videoId || null) !== S.shownId) {
+    S.shownId = st?.videoId || null;
+    fire('radio:track', { videoId: S.shownId, title: st?.title || '' });
+  }
   const mine = st?.likes?.[B.uid];
   $('#up span').textContent = count(st?.likes, 1);
   $('#down span').textContent = count(st?.likes, -1);
@@ -321,7 +331,7 @@ function renderSkip() {
   const st = S.state;
   const n = Object.keys(st?.skips || {}).length;
   const need = skipNeeded();
-  $('#skip').textContent = `GEÇ ${n}/${need}`;
+  $('#skip').textContent = `geç ${n}/${need}`;
   $('#skip').classList.toggle('on', !!st?.skips?.[B.uid]);
   if (st && n >= need && S.joined) next(st.videoId);
 }
@@ -415,9 +425,6 @@ function openJoin() {
   const mark = () => pick.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.a === avatar));
   pick.onclick = (e) => { const b = e.target.closest('button'); if (b) { avatar = b.dataset.a; mark(); } };
   mark();
-  $('#themePick').innerHTML = Object.entries(THEMES).map(([k, v]) => `<button type="button" data-theme="${k}">${v}</button>`).join('');
-  $('#themePick').onclick = (e) => { const b = e.target.closest('button'); if (b) applyTheme(b.dataset.theme); };
-  applyTheme(S.theme);
   $('#demoNote').hidden = !B?.local;
   $('#joinForm').onsubmit = () => {
     const name = $('#joinName').value.trim().slice(0, 20);
@@ -460,11 +467,6 @@ function bindUI() {
   $('#share').onclick = () => {
     const text = S.state ? `Şu an ${CONFIG.siteName}'da çalıyor: ${S.state.title}` : CONFIG.siteName;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.href)}`, '_blank', 'noopener');
-  };
-
-  $('#themeBtn').onclick = () => {
-    const keys = Object.keys(THEMES);
-    applyTheme(keys[(keys.indexOf(S.theme) + 1) % keys.length]);
   };
 
   $('#phaseBtn').onclick = () => {
@@ -531,8 +533,7 @@ function bindUI() {
 async function main() {
   $('#brand').textContent = CONFIG.siteName;
   document.title = CONFIG.siteName;
-  if (CONFIG.backgroundImage) document.documentElement.style.setProperty('--bg-image', `url("${CONFIG.backgroundImage}")`);
-  applyTheme(S.theme);
+  applyPhase();
   bindUI();
 
   try {

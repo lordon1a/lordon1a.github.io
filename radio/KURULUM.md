@@ -26,24 +26,25 @@ Realtime Database → **Rules** sekmesi. İçeriği `database.rules.json` dosyas
 
 Modlar sohbette **MOD** rozetiyle görünür, mesaj silebilir, kuyruktan şarkı kaldırabilir ve **GEÇ** tuşuyla şarkıyı oylamasız geçebilir.
 
-## Sunshine teması
-Varsayılan tema `sunshine`. Arka plan Three.js ile çizilen canlı bir sahne: güneş, ışınlar, deniz yansıması ve süzülen ışık zerreleri.
-Sahne ziyaretçinin saatine göre kendiliğinden değişir:
+## Tasarım
+Sayfanın arka planı Three.js ile çizilen bir oda: pencereden güneş ışığı giren bir masa ve üstünde bir pikap.
+- Plağın etiketinde çalan şarkının kapağı ve adı görünür. Müzik çalınca plak 33⅓ devirle döner, kol şarkı ilerledikçe içe kayar.
+- Plağa tıklayınca çal / durdur (sadece o dinleyici için).
+- Pencereden görünen gökyüzü, ışığın rengi ve açısı ziyaretçinin saatine göre değişir:
 
-| Saat | Vakit | Görünüm |
-|---|---|---|
-| 05–11 | sabah | gün doğumu, pembe-mavi gökyüzü, açık renk paneller |
-| 11–17 | öğle | parlak mavi gökyüzü, beyaz-sarı güneş |
-| 17–21 | akşam | turuncu-mor gün batımı, koyu paneller |
-| 21–05 | gece | ay, yıldızlar, lacivert tonlar |
+| Saat | Vakit |
+|---|---|
+| 05–11 | sabah |
+| 11–17 | öğle |
+| 17–21 | akşam (gün batımı) |
+| 21–05 | gece (ay ışığı) |
 
-Kartın altındaki **vakit** düğmesiyle otomatik yerine elle de seçilebilir. Şarkı değişince ve emoji atılınca güneş parlar.
-Renkler `sun.js` içindeki `PALETTES` (sahne) ve `style.css` içindeki `[data-phase=...]` bloklarında (paneller).
+Üstteki **vakit** düğmesiyle elle de seçilebilir.
 
 ## Özelleştirme
-- **İsim, arka plan görseli, yedek çalma listesi, emojiler, avatarlar:** `radio/config.js`
-- **Renkler ve fontlar:** `radio/style.css` dosyasının başındaki tema blokları (`amber`, `neon`, `minimal`, `lofi`).
-  Yeni bir tema eklemek için bir bloğu kopyala, adını değiştir, `app.js` içindeki `THEMES` listesine ekle.
+- **İsim, yedek çalma listesi, emojiler, avatarlar:** `radio/config.js`
+- **3D sahnenin renkleri ve ışıkları:** `radio/scene.js` içindeki `PHASES`
+- **Arayüz renkleri ve yazı tipleri:** `radio/style.css` başındaki `[data-phase=...]` blokları
 
 ## Nasıl çalışıyor?
 - Çalan şarkı ve başlama zamanı veritabanında tutulur; herkes şarkıyı aynı saniyeden dinler.

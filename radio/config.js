@@ -1,14 +1,7 @@
 // Radyo ayarları — burayı düzenleyerek siteyi kendine göre ayarlayabilirsin.
 export const CONFIG = {
   // Kartın başlığında görünen isim
-  siteName: 'SUNSHINE RADIO',
-
-  // Varsayılan tema: 'sunshine' | 'amber' | 'neon' | 'minimal' | 'lofi'  (renkler style.css içinde)
-  // 'sunshine' temasında sahne ziyaretçinin saatine göre sabah / öğle / akşam / gece olur.
-  defaultTheme: 'sunshine',
-
-  // Arka plan görseli (isteğe bağlı). Görseli radio/ klasörüne koyup adını yaz: 'arkaplan.jpg'
-  backgroundImage: '',
+  siteName: 'Sunshine Radio',
 
   // Firebase ayarları. Boş bırakılırsa site "demo modunda" çalışır (sadece sen görürsün).
   // Kurulum için KURULUM.md dosyasına bak.
