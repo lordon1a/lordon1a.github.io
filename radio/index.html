@@ -77,6 +77,8 @@
     <div class="queue-bar">
       <button id="queueToggle" class="queue-next" type="button"><span class="eyebrow">sıradaki</span> <b id="nextTitle">—</b> <span class="caret">▾</span></button>
       <button id="skip" class="skip" type="button">geç 0/1</button>
+      <button id="historyToggle" class="chip" type="button">geçmiş</button>
+      <button id="weeklyToggle" class="chip" type="button">haftanın</button>
     </div>
     <div id="queue" class="queue" hidden>
       <form id="addForm" class="row-form">
@@ -85,6 +87,13 @@
         <input id="addNote" maxlength="80" placeholder="not ekle (isteğe bağlı) · ör. Yiğit'e gelsin 🎧" autocomplete="off">
       </form>
       <ol id="queueList" class="queue-list"></ol>
+      <ul id="searchList" class="search-list" hidden></ul>
+    </div>
+    <div id="history" class="queue" hidden>
+      <ol id="historyList" class="queue-list"></ol>
+    </div>
+    <div id="weekly" class="queue" hidden>
+      <ol id="weeklyList" class="queue-list"></ol>
     </div>
 
     <ol id="messages" class="messages"></ol>

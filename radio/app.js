@@ -82,14 +82,19 @@ async function firebaseBackend(cfg) {
       if ((cur?.videoId ?? null) !== expected) return;
       return next;
     }).then((res) => res.committed),
+    addHistory: (h) => D.push(r('history'), h),
+    onHistory(cb) {
+      const q = D.query(r('history'), D.orderByChild('playedAt'), D.limitToLast(60));
+      D.onValue(q, (s) => cb(Object.values(s.val() || {}).sort((a, b) => (b.playedAt || 0) - (a.playedAt || 0))));
+    },
     react: (emoji) => D.push(r('reactions'), { emoji, ts: D.serverTimestamp() }),
   };
 }
 
 function localBackend() {
   const uid = 'demo';
-  const data = { state: null, queue: {}, presence: {} };
-  const subs = { state: [], queue: [], presence: [], chatAdd: [], chatDel: [], reaction: [] };
+  const data = { state: null, queue: {}, presence: {}, history: [] };
+  const subs = { state: [], queue: [], presence: [], chatAdd: [], chatDel: [], reaction: [], history: [] };
   const clone = (o) => (o == null ? null : JSON.parse(JSON.stringify(o)));
   const emit = (k, v) => queueMicrotask(() => subs[k].forEach((f) => f(v)));
   const emitState = () => emit('state', clone(data.state));
@@ -122,6 +127,8 @@ function localBackend() {
       emitState();
       return true;
     },
+    addHistory: (h) => { data.history.unshift(h); data.history = data.history.slice(0, 60); emit('history', [...data.history]); },
+    onHistory: (cb) => { subs.history.push(cb); cb([...data.history]); },
     react: (emoji) => emit('reaction', { emoji, ts: Date.now() }),
   };
 }
@@ -133,6 +140,7 @@ const S = {
   state: null,
   stateLoaded: false,
   queue: [],
+  history: [],
   presence: {},
   mods: {},
   joined: false,
@@ -191,6 +199,7 @@ async function next(expected) {
   const item = pickNext(expected);
   if (!item && expected === null) return; // çalacak bir şey yok
   S.advancing = true;
+  const prev = S.state;
   try {
     const carry = typeof item?.plIndex === 'number' ? item.plIndex : S.state?.plIndex;
     const state = item
@@ -198,6 +207,21 @@ async function next(expected) {
       : null;
     const ok = await B.advance(expected, state);
     if (ok && item) {
+      if (prev) {
+        try {
+          B.addHistory({
+            videoId: prev.videoId,
+            title: prev.title,
+            by: prev.by || 'radyo',
+            note: prev.note || null,
+            likes: count(prev.likes, 1),
+            dislikes: count(prev.likes, -1),
+            playedAt: prev.startedAt || B.now(),
+          });
+        } catch (err) {
+          console.warn('geçmiş yazılamadı', err);
+        }
+      }
       if (item.qid) B.removeFromQueue(item.qid);
       B.sendChat({ system: true, text: '♪ ' + state.title + (state.note ? ' · 🎧 ' + state.note : '') });
     }
@@ -371,6 +395,73 @@ function renderQueue() {
   }).join('');
 }
 
+function renderHistory() {
+  const list = $('#historyList');
+  if (!list) return;
+  if (!S.history.length) {
+    list.innerHTML = '<li class=queue-empty>Henüz çalınan şarkı kaydı yok.</li>';
+    return;
+  }
+  list.innerHTML = S.history.slice(0, 50).map((h) => `
+    <li data-vid=${esc(h.videoId)} data-title=${esc(h.title)}>
+      <span class=score>▲ ${h.likes || 0}</span>
+      <span class=q-title title=${esc(h.title)}>${esc(h.title)} <span class=q-by>· ${esc(h.by || 'radyo')}</span>${h.note ? ` <span class=q-note>🎧 ${esc(h.note)}</span>` : ''}</span>
+      <button data-again title=kuyruğa ekle>+</button>
+    </li>`).join('');
+}
+
+function renderWeekly() {
+  const list = $('#weeklyList');
+  if (!list) return;
+  const since = Date.now() - 7 * 86400000;
+  const week = S.history.filter((h) => (h.playedAt || 0) >= since);
+  if (!week.length) {
+    list.innerHTML = '<li class=queue-empty>Bu hafta için henüz veri yok.</li>';
+    return;
+  }
+  const songs = {};
+  const people = {};
+  week.forEach((h) => {
+    const s = songs[h.videoId] || (songs[h.videoId] = { title: h.title, likes: 0, plays: 0 });
+    s.likes += h.likes || 0;
+    s.plays += 1;
+    const name = h.by || 'radyo';
+    const p = people[name] || (people[name] = { likes: 0, songs: 0 });
+    p.likes += h.likes || 0;
+    p.songs += 1;
+  });
+  const topSongs = Object.values(songs).sort((a, b) => b.likes - a.likes || b.plays - a.plays).slice(0, 5);
+  const topPeople = Object.entries(people).sort((a, b) => b[1].likes - a[1].likes || b[1].songs - a[1].songs).slice(0, 5);
+  list.innerHTML = '<li class=weekly-head>şarkılar</li>' + topSongs.map((s, i) => `
+    <li><span class=score>${i + 1}</span><span class=q-title>${esc(s.title)} <span class=q-by>· ${s.plays} çalındı</span></span><span class=score>▲ ${s.likes}</span></li>`).join('')
+    + '<li class=weekly-head>dinleyiciler</li>' + topPeople.map(([name, p], i) => `
+    <li><span class=score>${i + 1}</span><span class=q-title>${esc(name)} <span class=q-by>· ${p.songs} şarkı</span></span><span class=score>▲ ${p.likes}</span></li>`).join('');
+}
+
+async function runSearch(query, note) {
+  const list = $('#searchList');
+  if (!list) return;
+  list.hidden = false;
+  list.dataset.note = note || '';
+  list.innerHTML = '<li class=s-meta>aranıyor…</li>';
+  try {
+    const res = await fetch('/search?q=' + encodeURIComponent(query));
+    const data = await res.json();
+    const results = data.results || [];
+    if (!results.length) {
+      list.innerHTML = '<li class=s-meta>sonuç bulunamadı</li>';
+      return;
+    }
+    list.innerHTML = results.map((r) => `
+      <li data-vid=${esc(r.videoId)} data-title=${esc(r.title)}>
+        <span class=s-title>${esc(r.title)} <span class=s-meta>· ${esc(r.channel || '')} ${esc(r.duration || '')}</span></span>
+        <button data-add title=kuyruğa ekle>+</button>
+      </li>`).join('');
+  } catch (err) {
+    list.innerHTML = '<li class=s-meta>arama servisine ulaşılamadı</li>';
+  }
+}
+
 function renderPresence() {
   const n = Object.keys(S.presence).length;
   $('#listeners').textContent = `${n} dinleyici`;
@@ -495,14 +586,63 @@ function bindUI() {
     q.hidden = !q.hidden;
     $('#queueToggle .caret').textContent = q.hidden ? '▾' : '▴';
     if (!q.hidden) $('#addInput').focus();
+    $('#history').hidden = true;
+    $('#weekly').hidden = true;
+  };
+
+  $('#historyToggle').onclick = () => {
+    const el = $('#history');
+    el.hidden = !el.hidden;
+    $('#queue').hidden = true;
+    $('#weekly').hidden = true;
+    if (!el.hidden) renderHistory();
+  };
+
+  $('#weeklyToggle').onclick = () => {
+    const el = $('#weekly');
+    el.hidden = !el.hidden;
+    $('#queue').hidden = true;
+    $('#history').hidden = true;
+    if (!el.hidden) renderWeekly();
+  };
+
+  $('#historyList').onclick = (e) => {
+    const li = e.target.closest('li[data-vid]');
+    if (!li) return;
+    const videoId = li.dataset.vid;
+    const title = li.dataset.title;
+    if (S.queue.some((q) => q.videoId === videoId) || S.state?.videoId === videoId) return toast('Bu şarkı zaten listede');
+    B.addToQueue({ videoId, title, by: S.profile?.name || 'anon', votes: { [B.uid]: 1 } });
+    toast('Kuyruğa eklendi ♪');
+  };
+
+  $('#searchList').onclick = (e) => {
+    const li = e.target.closest('li[data-vid]');
+    if (!li) return;
+    const videoId = li.dataset.vid;
+    const title = li.dataset.title;
+    if (S.queue.some((q) => q.videoId === videoId) || S.state?.videoId === videoId) return toast('Bu şarkı zaten listede');
+    const item = { videoId, title, by: S.profile?.name || 'anon', votes: { [B.uid]: 1 } };
+    const note = ($('#searchList').dataset.note || '').trim().slice(0, 80);
+    if (note) item.note = note;
+    B.addToQueue(item);
+    toast('Kuyruğa eklendi ♪');
+    $('#searchList').innerHTML = '';
+    $('#searchList').hidden = true;
+    $('#addInput').value = '';
+    $('#addNote').value = '';
   };
 
   $('#addForm').onsubmit = async (e) => {
     e.preventDefault();
     const input = $('#addInput');
     const noteInput = $('#addNote');
-    const id = parseVideoId(input.value);
-    if (!id) return toast('Geçerli bir YouTube linki değil');
+    const typed = input.value.trim();
+    const id = parseVideoId(typed);
+    if (!id) {
+      if (typed.length < 2) return toast('Link yapıştır ya da şarkı adı yaz');
+      return runSearch(typed, (noteInput?.value || '').trim().slice(0, 80));
+    }
     if (S.queue.some((q) => q.videoId === id) || S.state?.videoId === id) return toast('Bu şarkı zaten listede');
     const note = (noteInput?.value || '').trim().slice(0, 80);
     input.value = '';
@@ -564,6 +704,7 @@ async function main() {
   }
 
   B.onMods((m) => { S.mods = m; renderQueue(); });
+  B.onHistory((h) => { S.history = h || []; renderHistory(); renderWeekly(); });
   B.onPresence((p) => { S.presence = p; renderPresence(); });
   B.onQueue((q) => {
     S.queue = q;

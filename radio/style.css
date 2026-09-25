@@ -362,3 +362,22 @@ a { color: inherit; }
 #addForm { flex-wrap: wrap; }
 #addNote { flex: 1 0 100%; }
 .q-note { color: var(--accent); font-size: 11px; }
+
+/* ---------- geçmiş / haftanın listesi / arama ---------- */
+.queue-bar .chip { flex: none; }
+.search-list {
+  list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px;
+  max-height: 240px; overflow-y: auto;
+}
+.search-list[hidden] { display: none; }
+.search-list li {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 8px;
+  border-radius: 8px; background: var(--field);
+}
+.search-list .s-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-list .s-meta { color: var(--muted); font-size: 11px; }
+.search-list button { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+.weekly-head {
+  color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 8px 8px 2px;
+}
