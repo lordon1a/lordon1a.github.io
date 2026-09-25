@@ -10,7 +10,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { CONFIG } from './config.js';
 
 const root = document.documentElement;
 const mobile = matchMedia('(max-width: 900px)').matches;
@@ -583,134 +582,150 @@ if (renderer) {
   const YAW_IN = yawForRadius(0.72);
   const YAW_REST = -Math.PI / 2 - 0.05; // öne doğru park
 
-  /* ---------- Duvarda poster ---------- */
+  /* ---------- Duvarda kanla çizilmiş gülen yüz (Red John imzası) ---------- */
   const tickers = []; // her karede çağrılan küçük animasyonlar
-  const posterCanvas = document.createElement('canvas');
-  posterCanvas.width = 768;
-  posterCanvas.height = 1024;
-  const posterTex = new THREE.CanvasTexture(posterCanvas);
-  posterTex.colorSpace = THREE.SRGBColorSpace;
-  posterTex.anisotropy = 8;
 
-  // Kendi çizimimiz: Patrick Jane hayran posteri (config.js'te posterImage verilirse o görsel kullanılır)
-  function drawPoster() {
-    const g = posterCanvas.getContext('2d');
-    const w = 768;
-    const h = 1024;
-    const bg = g.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#f1e6d2');
-    bg.addColorStop(1, '#e2d2b8');
-    g.fillStyle = bg;
-    g.fillRect(0, 0, w, h);
-    // kâğıt dokusu
-    for (let i = 0; i < 4000; i++) {
-      g.fillStyle = `rgba(90,60,30,${Math.random() * 0.05})`;
-      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-    }
-    g.strokeStyle = '#2a211b';
-    g.lineWidth = 6;
-    g.strokeRect(34, 34, w - 68, h - 68);
-    g.lineWidth = 2;
-    g.strokeRect(48, 48, w - 96, h - 96);
+  // Tekrarlanabilir rastgelelik: her açılışta aynı çizim çıksın
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const jit = (n) => (rnd() - 0.5) * 2 * n;
 
-    g.fillStyle = '#2a211b';
-    g.textAlign = 'center';
-    g.font = '600 30px "DM Mono", monospace';
-    g.fillText('T H E   M E N T A L I S T', w / 2, 118);
+  const smileyCanvas = document.createElement('canvas');
+  smileyCanvas.width = smileyCanvas.height = 1024;
+  const smileyTex = new THREE.CanvasTexture(smileyCanvas);
+  smileyTex.colorSpace = THREE.SRGBColorSpace;
+  smileyTex.anisotropy = 8;
 
-    // kırmızı gülen yüz — boya gibi, akıntılı
-    const cx = w / 2;
-    const cy = 400;
-    const r = 190;
-    g.strokeStyle = '#b3121b';
-    g.fillStyle = '#b3121b';
+  function drawSmiley() {
+    const g = smileyCanvas.getContext('2d');
+    g.clearRect(0, 0, 1024, 1024);
     g.lineCap = 'round';
-    g.lineWidth = 26;
-    g.beginPath();
-    for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.05) {
-      const rr = r + Math.sin(a * 7) * 4 + Math.sin(a * 13) * 3;
-      const x = cx + Math.cos(a) * rr;
-      const y = cy + Math.sin(a) * rr;
-      a ? g.lineTo(x, y) : g.moveTo(x, y);
+    g.lineJoin = 'round';
+    const cx = 512;
+    const cy = 400;
+    const BLOOD = ['#6a0606', '#8e0b0b', '#a8120f', '#b81a14'];
+
+    // Parmak darbesi: aynı yol üstünden birkaç yarı saydam, titrek geçiş
+    function finger(pts, width, passes = 7) {
+      for (let p = 0; p < passes; p++) {
+        g.strokeStyle = BLOOD[Math.floor(rnd() * BLOOD.length)];
+        g.globalAlpha = 0.28 + rnd() * 0.3;
+        g.lineWidth = width * (0.55 + rnd() * 0.5);
+        const o = jit(width * 0.12);
+        g.beginPath();
+        pts.forEach(([x, y], i) => {
+          const px = x + o + jit(width * 0.07);
+          const py = y + o + jit(width * 0.07);
+          i ? g.lineTo(px, py) : g.moveTo(px, py);
+        });
+        g.stroke();
+      }
+      // kuruyan kenarlarda ince fırça izleri
+      g.globalAlpha = 0.25;
+      g.strokeStyle = BLOOD[0];
+      for (let k = 0; k < 4; k++) {
+        g.lineWidth = 1.5 + rnd() * 2;
+        const off = jit(width * 0.45);
+        g.beginPath();
+        pts.forEach(([x, y], i) => (i ? g.lineTo(x + off, y + off * 0.6) : g.moveTo(x + off, y + off * 0.6)));
+        g.stroke();
+      }
+      g.globalAlpha = 1;
     }
-    g.stroke();
-    for (const ex of [-70, 70]) {
+
+    // Aşağı akan kan izi, ucunda damla
+    function drip(x, y, len, w) {
+      let px = x;
+      let py = y;
+      const steps = 24;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const nx = x + Math.sin(t * 3 + x) * 3 + jit(0.8);
+        const ny = y + len * t;
+        g.strokeStyle = BLOOD[1];
+        g.globalAlpha = 0.85;
+        g.lineWidth = w * (1 - t * 0.55);
+        g.beginPath();
+        g.moveTo(px, py);
+        g.lineTo(nx, ny);
+        g.stroke();
+        px = nx;
+        py = ny;
+      }
+      g.fillStyle = BLOOD[0];
       g.beginPath();
-      g.ellipse(cx + ex, cy - 55, 20, 34, 0, 0, Math.PI * 2);
+      g.ellipse(px, py + w * 0.25, w * 0.62, w * 0.85, 0, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 1;
+    }
+
+    // Yüzün dairesi: tek hamlede, biraz basık ve uçları üst üste binen
+    const R = 300;
+    const circle = [];
+    for (let a = -1.9; a <= -1.9 + Math.PI * 2 + 0.25; a += 0.045) {
+      const r = R + Math.sin(a * 3 + 1) * 9 + jit(2.5);
+      circle.push([cx + Math.cos(a) * r * 1.02, cy + Math.sin(a) * r * 0.97]);
+    }
+    finger(circle, 58, 10);
+
+    // Gözler: dikey, uzun oval, hafif içe eğik; parmakla doldurulmuş
+    for (const [ex, tilt] of [[-108, 0.12], [108, -0.12]]) {
+      for (let p = 0; p < 9; p++) {
+        g.fillStyle = BLOOD[Math.floor(rnd() * BLOOD.length)];
+        g.globalAlpha = 0.3 + rnd() * 0.3;
+        g.beginPath();
+        g.ellipse(cx + ex + jit(4), cy - 80 + jit(4), 36 + jit(4), 72 + jit(5), tilt + jit(0.05), 0, Math.PI * 2);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+
+    // Gülümseme: geniş yay, uçları yukarı kıvrık
+    const mouth = [];
+    for (let a = 0.16; a <= Math.PI - 0.16; a += 0.04) {
+      mouth.push([cx + Math.cos(a) * 190 + jit(1.5), cy + 20 + Math.sin(a) * 150 + jit(1.5)]);
+    }
+    const tipL = mouth[0];
+    const tipR = mouth[mouth.length - 1];
+    mouth.unshift([tipL[0] + 18, tipL[1] - 22]);
+    mouth.push([tipR[0] - 18, tipR[1] - 22]);
+    finger(mouth, 50, 9);
+
+    // Akıntılar: dairenin alt kısmından ve ağızdan
+    const drips = [
+      [cx - 250, cy + 165, 190, 18], [cx - 195, cy + 225, 300, 22], [cx - 125, cy + 268, 240, 20],
+      [cx - 55, cy + 290, 330, 24], [cx + 20, cy + 294, 200, 21], [cx + 85, cy + 284, 360, 24],
+      [cx + 160, cy + 250, 260, 21], [cx + 225, cy + 200, 320, 20], [cx + 272, cy + 130, 150, 16],
+      [cx - 290, cy + 70, 110, 14], [cx - 140, cy + 160, 120, 15], [cx - 60, cy + 178, 200, 16],
+      [cx + 40, cy + 180, 90, 14], [cx + 115, cy + 160, 150, 15], [cx + 175, cy + 118, 60, 12],
+    ];
+    for (const [x, y, len, w] of drips) drip(x, y, len, w);
+
+    // birkaç sıçrama
+    for (let i = 0; i < 26; i++) {
+      const a = rnd() * Math.PI * 2;
+      const d = R + 30 + rnd() * 90;
+      g.fillStyle = BLOOD[Math.floor(rnd() * 3)];
+      g.globalAlpha = 0.5 + rnd() * 0.4;
+      g.beginPath();
+      g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.9, 1.5 + rnd() * 5, 0, Math.PI * 2);
       g.fill();
     }
-    g.lineWidth = 24;
-    g.beginPath();
-    g.arc(cx, cy + 5, 115, 0.18 * Math.PI, 0.82 * Math.PI);
-    g.stroke();
-    for (const [x, len] of [[cx - 150, 60], [cx - 20, 120], [cx + 95, 80], [cx + 170, 40], [cx - 88, 45]]) {
-      const y0 = x < cx - 100 || x > cx + 140 ? cy + 100 : cy + 175;
-      g.lineWidth = 9;
-      g.beginPath();
-      g.moveTo(x, y0);
-      g.lineTo(x + 2, y0 + len);
-      g.stroke();
-      g.beginPath();
-      g.arc(x + 2, y0 + len, 7, 0, Math.PI * 2);
-      g.fill();
-    }
-
-    // çay fincanı
-    g.fillStyle = '#2a211b';
-    g.strokeStyle = '#2a211b';
-    g.lineWidth = 7;
-    const ty = 760;
-    g.beginPath();
-    g.moveTo(cx - 62, ty - 40);
-    g.lineTo(cx + 62, ty - 40);
-    g.quadraticCurveTo(cx + 58, ty + 30, cx, ty + 34);
-    g.quadraticCurveTo(cx - 58, ty + 30, cx - 62, ty - 40);
-    g.fill();
-    g.beginPath();
-    g.arc(cx + 70, ty - 10, 20, -Math.PI / 2, Math.PI / 2);
-    g.stroke();
-    g.beginPath();
-    g.ellipse(cx, ty + 42, 100, 12, 0, 0, Math.PI * 2);
-    g.fill();
-    g.lineWidth = 4;
-    for (const sx of [-24, 0, 24]) {
-      g.beginPath();
-      g.moveTo(cx + sx, ty - 55);
-      g.bezierCurveTo(cx + sx - 16, ty - 80, cx + sx + 16, ty - 100, cx + sx, ty - 125);
-      g.stroke();
-    }
-
-    g.font = 'italic 700 78px "Fraunces", Georgia, serif';
-    g.fillText('Patrick Jane', w / 2, 905);
-    g.font = '400 22px "DM Mono", monospace';
-    g.fillText('“ben medyum değilim.”', w / 2, 950);
-    posterTex.needsUpdate = true;
+    g.globalAlpha = 1;
+    smileyTex.needsUpdate = true;
   }
-  drawPoster();
-  document.fonts?.ready.then(() => { if (!CONFIG.posterImage) drawPoster(); });
-  if (CONFIG.posterImage) {
-    new THREE.TextureLoader().load(CONFIG.posterImage, (t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
-      posterMesh.material.map = t;
-      posterMesh.material.needsUpdate = true;
-      // görselin oranına göre posteri boyutlandır
-      const ratio = t.image.width / t.image.height;
-      posterMesh.scale.set(ratio / (768 / 1024), 1, 1);
-    });
-  }
+  drawSmiley();
 
-  const POSTER_W = 1.6;
-  const POSTER_H = POSTER_W * (1024 / 768);
-  const poster = new THREE.Group();
-  poster.position.set(3.25, 3.15, WALL_Z + T / 2 + 0.03);
-  poster.rotation.z = -0.015;
-  scene.add(poster);
-  const posterMesh = new THREE.Mesh(new THREE.PlaneGeometry(POSTER_W, POSTER_H), new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.8 }));
-  posterMesh.position.z = 0.03;
-  posterMesh.receiveShadow = true;
-  poster.add(posterMesh);
-  const posterFrame = shadowy(new THREE.Mesh(new THREE.BoxGeometry(POSTER_W + 0.12, POSTER_H + 0.12, 0.05), new THREE.MeshStandardMaterial({ color: 0x1b1512, roughness: 0.5 })));
-  poster.add(posterFrame);
+  const smiley = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.3, 2.3),
+    new THREE.MeshPhysicalMaterial({
+      map: smileyTex, transparent: true, depthWrite: false, roughness: 0.35, clearcoat: 0.4, clearcoatRoughness: 0.3,
+      polygonOffset: true, polygonOffsetFactor: -2,
+    }),
+  );
+  smiley.position.set(3.25, 2.9, WALL_Z + T / 2 + 0.005);
+  smiley.receiveShadow = true;
+  scene.add(smiley);
 
   /* ---------- Masadaki figürler ---------- */
   const lathe = (pts, mat, seg = 64) => shadowy(new THREE.Mesh(new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg), mat));

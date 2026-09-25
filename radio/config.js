@@ -3,10 +3,6 @@ export const CONFIG = {
   // Kartın başlığında görünen isim
   siteName: 'Sunshine Radio',
 
-  // Duvardaki poster. Boşsa hazır çizim (Patrick Jane hayran posteri) kullanılır.
-  // Kendi görselini koymak için dosyayı radio/ klasörüne at ve adını yaz: 'poster.jpg'
-  posterImage: '',
-
   // Firebase ayarları. Boş bırakılırsa site "demo modunda" çalışır (sadece sen görürsün).
   // Kurulum için KURULUM.md dosyasına bak.
   firebase: {

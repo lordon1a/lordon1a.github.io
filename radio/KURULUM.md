@@ -41,9 +41,7 @@ Sayfanın arka planı Three.js ile çizilen bir oda: pencereden güneş ışığ
 
 Üstteki **vakit** düğmesiyle elle de seçilebilir.
 
-Odada ayrıca şunlar var: pencerede adalar ve geçen bir yelkenli, duvarda Patrick Jane hayran posteri, masada çay fincanı, sukulent, plak kapakları, lastik ördek (şarkı değişince zıplar) ve masaya kazınmış bir **11**.
-
-**Posteri kendi görselinle değiştirmek için:** görseli `radio/` klasörüne koy (ör. `poster.jpg`) ve `config.js` içinde `posterImage: 'poster.jpg'` yaz.
+Odada ayrıca şunlar var: pencerede adalar ve geçen bir yelkenli, duvarda kanla çizilmiş Red John gülen yüzü, masada çay fincanı, sukulent, plak kapakları, lastik ördek (şarkı değişince zıplar) ve masaya kazınmış bir **11**.
 
 ## Özelleştirme
 - **İsim, yedek çalma listesi, emojiler, avatarlar:** `radio/config.js`
