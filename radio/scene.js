@@ -10,6 +10,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { CONFIG } from './config.js';
 
 const root = document.documentElement;
 const mobile = matchMedia('(max-width: 900px)').matches;
@@ -294,7 +295,7 @@ if (renderer) {
   scene.add(table);
 
   const WALL_Z = -3.8;
-  const WIN = { x0: -4.6, x1: 2.6, y0: 1.1, y1: 8.5 }; // pencere boşluğu
+  const WIN = { x0: -4.9, x1: 1.5, y0: 1.1, y1: 8.5 }; // pencere boşluğu
   const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: plasterTex, roughness: 0.95 });
   const frameMat = new THREE.MeshStandardMaterial({ color: 0xf6efe6, roughness: 0.5 });
   const wall = new THREE.Group();
@@ -328,12 +329,12 @@ if (renderer) {
     uniforms: {
       uTime: { value: 0 }, uTop: { value: C('#000') }, uLow: { value: C('#000') }, uSea: { value: C('#000') },
       uDeep: { value: C('#000') }, uSun: { value: C('#fff') }, uSunPos: { value: new THREE.Vector2() },
-      uSunR: { value: 1 }, uHorizon: { value: 0 }, uStars: { value: 0 }, uSpan: { value: 10 },
+      uSunR: { value: 1 }, uHorizon: { value: 0 }, uStars: { value: 0 }, uSpan: { value: 10 }, uViewX: { value: new THREE.Vector2(-5, 5) },
     },
     vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
     fragmentShader: /* glsl */ `
       uniform float uTime, uSunR, uHorizon, uStars, uSpan;
-      uniform vec3 uTop, uLow, uSea, uDeep, uSun; uniform vec2 uSunPos;
+      uniform vec3 uTop, uLow, uSea, uDeep, uSun; uniform vec2 uSunPos, uViewX;
       varying vec2 vP;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
       float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -360,10 +361,39 @@ if (renderer) {
           float z = min(1.0 / (depth + 0.05), 7.0); // ufukta aşırı sıklaşıp kareli görünmesin
           float dx = (vP.x - uSunPos.x) / uSunR;
           float column = exp(-pow(dx / (0.9 + depth * 2.0), 2.0));
-          float w = noise(vec2(dx * z * 1.6, z * 4.0 - uTime * 0.6)) * noise(vec2(dx * 5.0, z * 9.0 + uTime * 0.4));
-          col += uSun * column * smoothstep(0.04, 0.6, w) * 1.9 * (1.0 - depth * 0.6);
+          // yatay parıltı çizgileri (dalgaların üstünde)
+          float a = sin(z * 22.0 - uTime * 1.1 + noise(vec2(dx * 5.0, z * 2.0)) * 2.5);
+          float b = smoothstep(0.5, 0.9, noise(vec2(dx * 9.0 / (0.6 + depth * 3.0), z * 5.0 + uTime * 0.35)));
+          float w = pow(max(a, 0.0), 6.0) * b;
+          col += uSun * column * w * 2.2 * (1.0 - depth * 0.5);
+          col += uSun * column * 0.12;
           col += uLow * 0.5 * exp(-depth * 18.0);
         }
+
+        // uzaktaki adalar (pusla birlikte)
+        float vw = uViewX.y - uViewX.x;
+        vec3 haze = mix(uDeep, uLow, 0.3);
+        float x1 = (vP.x - (uViewX.x + vw * 0.2)) / (vw * 0.2);
+        float x2 = (vP.x - (uViewX.x + vw * 0.36)) / (vw * 0.1);
+        float hill = max(pow(max(1.0 - abs(x1), 0.0), 1.5) * (0.85 + 0.3 * noise(vec2(vP.x * 2.0, 1.0))), 0.6 * pow(max(1.0 - abs(x2), 0.0), 1.3));
+        if (vP.y >= uHorizon && vP.y < uHorizon + hill * uSpan * 0.07) col = mix(col, haze, 0.85);
+
+        // yavaşça geçen yelkenli
+        float bs = uSpan * 0.03;
+        float range = vw + bs * 8.0;
+        float bx = uViewX.x - bs * 4.0 + mod(uTime * 0.12 + vw * 0.55, range);
+        float by = uHorizon - uSpan * 0.035;
+        float bob = sin(uTime * 1.3) * bs * 0.04;
+        float ry = vP.y - by - bob;
+        float rx = vP.x - bx;
+        float hull = step(-bs * 0.28, ry) * step(ry, 0.0) * step(abs(rx), bs * (1.1 + ry / bs * 1.2));
+        float h = ry / (bs * 1.7);
+        float sail = step(0.02, h) * step(h, 1.0) * step(0.0, rx) * step(rx, bs * 0.9 * (1.0 - h));
+        float jib = step(0.02, h) * step(h, 0.8) * step(rx, -bs * 0.06) * step(-bs * 0.7 * (1.0 - h / 0.8), rx);
+        float mast = step(abs(rx + bs * 0.03), bs * 0.03) * step(0.0, ry) * step(ry, bs * 1.8);
+        col = mix(col, mix(uDeep, uSun, 0.55), clamp(sail + jib, 0.0, 1.0));
+        col = mix(col, uDeep * 0.5, clamp(hull + mast, 0.0, 1.0));
+
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
@@ -553,6 +583,297 @@ if (renderer) {
   const YAW_IN = yawForRadius(0.72);
   const YAW_REST = -Math.PI / 2 - 0.05; // öne doğru park
 
+  /* ---------- Duvarda poster ---------- */
+  const tickers = []; // her karede çağrılan küçük animasyonlar
+  const posterCanvas = document.createElement('canvas');
+  posterCanvas.width = 768;
+  posterCanvas.height = 1024;
+  const posterTex = new THREE.CanvasTexture(posterCanvas);
+  posterTex.colorSpace = THREE.SRGBColorSpace;
+  posterTex.anisotropy = 8;
+
+  // Kendi çizimimiz: Patrick Jane hayran posteri (config.js'te posterImage verilirse o görsel kullanılır)
+  function drawPoster() {
+    const g = posterCanvas.getContext('2d');
+    const w = 768;
+    const h = 1024;
+    const bg = g.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#f1e6d2');
+    bg.addColorStop(1, '#e2d2b8');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, w, h);
+    // kâğıt dokusu
+    for (let i = 0; i < 4000; i++) {
+      g.fillStyle = `rgba(90,60,30,${Math.random() * 0.05})`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    g.strokeStyle = '#2a211b';
+    g.lineWidth = 6;
+    g.strokeRect(34, 34, w - 68, h - 68);
+    g.lineWidth = 2;
+    g.strokeRect(48, 48, w - 96, h - 96);
+
+    g.fillStyle = '#2a211b';
+    g.textAlign = 'center';
+    g.font = '600 30px "DM Mono", monospace';
+    g.fillText('T H E   M E N T A L I S T', w / 2, 118);
+
+    // kırmızı gülen yüz — boya gibi, akıntılı
+    const cx = w / 2;
+    const cy = 400;
+    const r = 190;
+    g.strokeStyle = '#b3121b';
+    g.fillStyle = '#b3121b';
+    g.lineCap = 'round';
+    g.lineWidth = 26;
+    g.beginPath();
+    for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.05) {
+      const rr = r + Math.sin(a * 7) * 4 + Math.sin(a * 13) * 3;
+      const x = cx + Math.cos(a) * rr;
+      const y = cy + Math.sin(a) * rr;
+      a ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke();
+    for (const ex of [-70, 70]) {
+      g.beginPath();
+      g.ellipse(cx + ex, cy - 55, 20, 34, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.lineWidth = 24;
+    g.beginPath();
+    g.arc(cx, cy + 5, 115, 0.18 * Math.PI, 0.82 * Math.PI);
+    g.stroke();
+    for (const [x, len] of [[cx - 150, 60], [cx - 20, 120], [cx + 95, 80], [cx + 170, 40], [cx - 88, 45]]) {
+      const y0 = x < cx - 100 || x > cx + 140 ? cy + 100 : cy + 175;
+      g.lineWidth = 9;
+      g.beginPath();
+      g.moveTo(x, y0);
+      g.lineTo(x + 2, y0 + len);
+      g.stroke();
+      g.beginPath();
+      g.arc(x + 2, y0 + len, 7, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // çay fincanı
+    g.fillStyle = '#2a211b';
+    g.strokeStyle = '#2a211b';
+    g.lineWidth = 7;
+    const ty = 760;
+    g.beginPath();
+    g.moveTo(cx - 62, ty - 40);
+    g.lineTo(cx + 62, ty - 40);
+    g.quadraticCurveTo(cx + 58, ty + 30, cx, ty + 34);
+    g.quadraticCurveTo(cx - 58, ty + 30, cx - 62, ty - 40);
+    g.fill();
+    g.beginPath();
+    g.arc(cx + 70, ty - 10, 20, -Math.PI / 2, Math.PI / 2);
+    g.stroke();
+    g.beginPath();
+    g.ellipse(cx, ty + 42, 100, 12, 0, 0, Math.PI * 2);
+    g.fill();
+    g.lineWidth = 4;
+    for (const sx of [-24, 0, 24]) {
+      g.beginPath();
+      g.moveTo(cx + sx, ty - 55);
+      g.bezierCurveTo(cx + sx - 16, ty - 80, cx + sx + 16, ty - 100, cx + sx, ty - 125);
+      g.stroke();
+    }
+
+    g.font = 'italic 700 78px "Fraunces", Georgia, serif';
+    g.fillText('Patrick Jane', w / 2, 905);
+    g.font = '400 22px "DM Mono", monospace';
+    g.fillText('“ben medyum değilim.”', w / 2, 950);
+    posterTex.needsUpdate = true;
+  }
+  drawPoster();
+  document.fonts?.ready.then(() => { if (!CONFIG.posterImage) drawPoster(); });
+  if (CONFIG.posterImage) {
+    new THREE.TextureLoader().load(CONFIG.posterImage, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      posterMesh.material.map = t;
+      posterMesh.material.needsUpdate = true;
+      // görselin oranına göre posteri boyutlandır
+      const ratio = t.image.width / t.image.height;
+      posterMesh.scale.set(ratio / (768 / 1024), 1, 1);
+    });
+  }
+
+  const POSTER_W = 1.6;
+  const POSTER_H = POSTER_W * (1024 / 768);
+  const poster = new THREE.Group();
+  poster.position.set(3.25, 3.15, WALL_Z + T / 2 + 0.03);
+  poster.rotation.z = -0.015;
+  scene.add(poster);
+  const posterMesh = new THREE.Mesh(new THREE.PlaneGeometry(POSTER_W, POSTER_H), new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.8 }));
+  posterMesh.position.z = 0.03;
+  posterMesh.receiveShadow = true;
+  poster.add(posterMesh);
+  const posterFrame = shadowy(new THREE.Mesh(new THREE.BoxGeometry(POSTER_W + 0.12, POSTER_H + 0.12, 0.05), new THREE.MeshStandardMaterial({ color: 0x1b1512, roughness: 0.5 })));
+  poster.add(posterFrame);
+
+  /* ---------- Masadaki figürler ---------- */
+  const lathe = (pts, mat, seg = 64) => shadowy(new THREE.Mesh(new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), seg), mat));
+
+  // Çay fincanı ve tabağı (Jane'in çayı), üstünde buhar
+  const porcelain = new THREE.MeshPhysicalMaterial({ color: 0xf7f3ec, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.1, side: THREE.DoubleSide });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd9a441, metalness: 1, roughness: 0.3 });
+  const tea = new THREE.Group();
+  tea.position.set(3.05, 0, 1.55);
+  tea.rotation.y = -0.6;
+  scene.add(tea);
+  tea.add(lathe([[0, 0], [0.5, 0], [0.56, 0.05], [0.52, 0.065], [0.22, 0.035], [0, 0.035]], porcelain));
+  const cup = lathe([[0, 0.035], [0.17, 0.035], [0.19, 0.06], [0.3, 0.3], [0.33, 0.42], [0.31, 0.42], [0.28, 0.31], [0.17, 0.08], [0, 0.08]], porcelain);
+  tea.add(cup);
+  const rim = shadowy(new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.008, 8, 64), gold));
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.42;
+  tea.add(rim);
+  const teaTop = new THREE.Mesh(new THREE.CircleGeometry(0.29, 48), new THREE.MeshPhysicalMaterial({ color: 0x7a3d12, roughness: 0.1, clearcoat: 1 }));
+  teaTop.rotation.x = -Math.PI / 2;
+  teaTop.position.y = 0.36;
+  tea.add(teaTop);
+  const handle = shadowy(new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 12, 32, Math.PI * 1.3), porcelain));
+  handle.position.set(0.34, 0.25, 0);
+  handle.rotation.z = -Math.PI * 0.65;
+  tea.add(handle);
+  const steamMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: /* glsl */ `
+      uniform float uTime; varying vec2 vUv;
+      void main(){
+        float y = vUv.y;
+        float x = vUv.x - 0.5 - sin(y * 6.0 - uTime * 1.2) * 0.12 * y - sin(y * 13.0 - uTime * 2.0) * 0.04;
+        float wisp = exp(-pow(x / (0.05 + y * 0.12), 2.0));
+        float a = wisp * smoothstep(0.0, 0.15, y) * (1.0 - smoothstep(0.5, 1.0, y)) * 0.22;
+        gl_FragColor = vec4(vec3(1.0), a);
+      }`,
+  });
+  const steam = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 1.1), steamMat);
+  steam.position.set(tea.position.x, 0.95, tea.position.z);
+  scene.add(steam);
+  tickers.push((t) => { steamMat.uniforms.uTime.value = t; steam.quaternion.copy(camera.quaternion); });
+
+  // Sukulent saksısı
+  const plant = new THREE.Group();
+  plant.position.set(-3.75, 0, -1.9);
+  scene.add(plant);
+  plant.add(lathe([[0, 0], [0.3, 0], [0.4, 0.55], [0.46, 0.56], [0.46, 0.66], [0.41, 0.66], [0.38, 0.6], [0, 0.6]], new THREE.MeshStandardMaterial({ color: 0xc0643a, roughness: 0.85 })));
+  const soil = new THREE.Mesh(new THREE.CircleGeometry(0.39, 32), new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 1 }));
+  soil.rotation.x = -Math.PI / 2;
+  soil.position.y = 0.61;
+  plant.add(soil);
+  const leafGeo = new THREE.SphereGeometry(1, 16, 12);
+  leafGeo.translate(0, 0, 1);
+  const leafMats = ['#6f9c6a', '#86b07a', '#9cc28c'].map((c) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.45, clearcoat: 0.3, sheen: 0.5, sheenColor: new THREE.Color('#d8f0c8') }));
+  [[10, 0.28, 0.35], [8, 0.22, 0.7], [6, 0.15, 1.05], [4, 0.1, 1.3]].forEach(([n, len, tilt], ring) => {
+    for (let i = 0; i < n; i++) {
+      const leaf = shadowy(new THREE.Mesh(leafGeo, leafMats[ring % 3]));
+      leaf.scale.set(0.07, 0.035, len);
+      leaf.position.y = 0.64 + ring * 0.03;
+      leaf.rotation.order = 'YXZ';
+      leaf.rotation.y = (i / n) * Math.PI * 2 + ring * 0.4;
+      leaf.rotation.x = -tilt * 0.5;
+      plant.add(leaf);
+    }
+  });
+
+  // Üst üste plak kapakları
+  const sleeveArt = [
+    (g, s) => { g.fillStyle = '#f2c14e'; g.fillRect(0, 0, s, s); g.fillStyle = '#e4572e'; for (let i = 0; i < 6; i++) g.fillRect(0, s * 0.55 + i * 34, s, 18); g.fillStyle = '#fff4d6'; g.beginPath(); g.arc(s / 2, s * 0.42, s * 0.22, 0, Math.PI * 2); g.fill(); },
+    (g, s) => { g.fillStyle = '#1f3a5f'; g.fillRect(0, 0, s, s); g.strokeStyle = '#8ecae6'; g.lineWidth = 10; for (let i = 1; i < 8; i++) { g.beginPath(); g.arc(s * 0.3, s * 0.7, i * 50, 0, Math.PI * 2); g.stroke(); } },
+    (g, s) => { g.fillStyle = '#e9e3d5'; g.fillRect(0, 0, s, s); g.fillStyle = '#222'; g.font = 'italic 700 120px Georgia, serif'; g.fillText('Sun', 40, 180); g.fillStyle = '#c44536'; g.fillRect(40, 220, s - 80, 16); },
+  ];
+  const sleeves = new THREE.Group();
+  sleeves.position.set(3.4, 0, -1.55);
+  scene.add(sleeves);
+  sleeveArt.forEach((art, i) => {
+    const top = new THREE.MeshStandardMaterial({ map: canvasTex(512, art), roughness: 0.7 });
+    const edge = new THREE.MeshStandardMaterial({ color: 0xd9cfc0, roughness: 0.8 });
+    const sl = shadowy(new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.035, 1.35), [edge, edge, top, edge, edge, edge]));
+    sl.position.y = 0.02 + i * 0.037;
+    sl.rotation.y = [0.25, -0.1, 0.12][i];
+    sleeves.add(sl);
+  });
+
+  // Lastik ördek
+  const duckMat = new THREE.MeshPhysicalMaterial({ color: 0xffcf33, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2 });
+  const duck = new THREE.Group();
+  duck.position.set(-3.55, 0, -0.35);
+  duck.rotation.y = 0.9;
+  scene.add(duck);
+  const dBody = shadowy(new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 24), duckMat));
+  dBody.scale.set(1.25, 0.8, 1);
+  dBody.position.y = 0.24;
+  duck.add(dBody);
+  const dTail = shadowy(new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 16), duckMat));
+  dTail.position.set(-0.36, 0.36, 0);
+  dTail.rotation.z = 0.9;
+  duck.add(dTail);
+  const dHead = shadowy(new THREE.Mesh(new THREE.SphereGeometry(0.17, 32, 24), duckMat));
+  dHead.position.set(0.2, 0.55, 0);
+  duck.add(dHead);
+  const beak = shadowy(new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshPhysicalMaterial({ color: 0xff7a1a, roughness: 0.35, clearcoat: 0.6 })));
+  beak.scale.set(1.4, 0.45, 1);
+  beak.position.set(0.37, 0.51, 0);
+  duck.add(beak);
+  for (const z of [-0.08, 0.08]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 8), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 }));
+    eye.position.set(0.3, 0.6, z);
+    duck.add(eye);
+  }
+  let duckBounce = 0;
+  addEventListener('radio:pulse', () => { duckBounce = 1; });
+  tickers.push((t, dt) => {
+    duckBounce *= Math.pow(0.05, dt);
+    duck.position.y = Math.abs(Math.sin(t * 9)) * 0.12 * duckBounce;
+    duck.rotation.z = Math.sin(t * 2) * 0.03 + Math.sin(t * 9) * 0.08 * duckBounce;
+  });
+
+  /* ---------- Masaya kazınmış "11" ---------- */
+  const carveTex = canvasTex(512, (g, s) => {
+    g.clearRect(0, 0, s, s);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '700 300px Georgia, serif';
+    g.save();
+    g.translate(s / 2, s / 2);
+    g.rotate(-0.08);
+    g.scale(0.9, 1);
+    // açık kenar (ışık alan oyuk kenarı)
+    g.fillStyle = 'rgba(235,190,140,0.55)';
+    g.fillText('11', -5, -5);
+    // oyuğun karanlık içi, bıçak izi gibi hafif titrek
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle = `rgba(${55 + i * 6},${28 + i * 3},${12 + i * 2},0.5)`;
+      g.fillText('11', (Math.random() - 0.5) * 4 + 2, (Math.random() - 0.5) * 4 + 3);
+    }
+    g.restore();
+    // birkaç çizik
+    g.strokeStyle = 'rgba(60,30,12,0.35)';
+    g.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const x = s * 0.2 + Math.random() * s * 0.6;
+      const y = s * 0.78 + Math.random() * s * 0.12;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + 20 + Math.random() * 40, y + (Math.random() - 0.5) * 8);
+      g.stroke();
+    }
+  });
+  carveTex.wrapS = carveTex.wrapT = THREE.ClampToEdgeWrapping;
+  const carve = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.05, 1.05),
+    new THREE.MeshStandardMaterial({ map: carveTex, transparent: true, opacity: 0.8, roughness: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+  );
+  carve.rotation.x = -Math.PI / 2;
+  carve.rotation.z = 0.3;
+  carve.position.set(-3.3, 0.002, 1.2);
+  carve.receiveShadow = true;
+  scene.add(carve);
+
   // Plak/tabla tıklanabilir
   const clickables = [disc, label, platter];
 
@@ -587,7 +908,7 @@ if (renderer) {
 
     // Dar ekranda pikabın tamamı sığsın diye kamerayı geri çek
     const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
-    const need = 6.2 / (2 * Math.tan(hfov / 2));
+    const need = (mobile ? 8.4 : 6.2) / (2 * Math.tan(hfov / 2)); // mobilde figürler de sığsın
     const dir = CAM_DEFAULT.clone().sub(CAM_LOOK);
     CAM_BASE.copy(CAM_LOOK).add(dir.setLength(Math.max(dir.length(), need)));
   }
@@ -650,6 +971,7 @@ if (renderer) {
     const span = v.y1 - v.y0;
     u.uHorizon.value = v.y0 + span * 0.3;
     u.uSpan.value = span * 0.8;
+    u.uViewX.value.set(v.x0, v.x1);
     u.uSunR.value = span * 0.09 * P.sunSize;
     u.uSunPos.value.set(v.x0 + (v.x1 - v.x0) * (0.5 + P.az * 0.5), u.uHorizon.value + span * 0.55 * P.sunY + u.uSunR.value * 0.2);
     bloom.strength = 0.42 + state.pulse * 0.2;
@@ -697,6 +1019,7 @@ if (renderer) {
 
     applyPalette(dt);
     skyMat.uniforms.uTime.value = time;
+    for (const f of tickers) f(time, dt);
     beamMat.uniforms.uTime.value = time;
     dustMat.uniforms.uTime.value = time;
 
