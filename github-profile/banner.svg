@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="Yiğit Güldal — economics, data and software, built under the sun">
+  <defs>
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="11"/>
+      <feDisplacementMap in="SourceGraphic" scale="3"/>
+    </filter>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.35  0 0 0 0 0.2  0 0 0 .07 0"/>
+    </filter>
+    <radialGradient id="sunFill" cx="45%" cy="40%" r="65%">
+      <stop offset="0" stop-color="#fff3b8"/>
+      <stop offset=".55" stop-color="#f7c236"/>
+      <stop offset="1" stop-color="#ec8f1f"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffd35a" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#ffd35a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- kâğıt -->
+  <rect width="1280" height="420" fill="#f3ead6"/>
+  <rect width="1280" height="420" filter="url(#paper)"/>
+  <!-- çerçeve + köşe artıları -->
+  <rect x="18" y="18" width="1244" height="384" fill="none" stroke="#2b2118" stroke-width="2"/>
+  <rect x="28" y="28" width="1224" height="364" fill="none" stroke="#2b2118" stroke-width=".8" opacity=".6"/>
+  <g stroke="#2b2118" stroke-width="1.5">
+    <path d="M40 48h16M48 40v16M1224 48h16M1232 40v16M40 372h16M48 364v16M1224 372h16M1232 364v16"/>
+  </g>
+
+  <!-- yazılar -->
+  <text x="84" y="104" font-family="'DejaVu Sans Mono','Courier New',monospace" font-size="15" letter-spacing="5" fill="#8a6a4a">— LORDON1A · GULDAL.ME</text>
+  <text x="80" y="218" font-family="Georgia,'Times New Roman',serif" font-size="112" font-weight="700" letter-spacing="-3" fill="#1d150e">YİĞİT</text>
+  <text x="80" y="318" font-family="Georgia,'Times New Roman',serif" font-size="112" font-weight="700" letter-spacing="-3" fill="#1d150e">GÜLDAL</text>
+  <rect x="84" y="340" width="520" height="2.5" fill="#1d150e"/>
+  <text x="84" y="372" font-family="'DejaVu Sans Mono','Courier New',monospace" font-size="17" letter-spacing="4.2" fill="#1d150e">ECONOMICS · DATA · SOFTWARE — BUILT UNDER THE SUN.</text>
+
+  <!-- sağ taraf: eskizler -->
+  <g transform="translate(655 0)">
+    <!-- güneş -->
+    <circle cx="380" cy="150" r="150" fill="url(#glow)"/>
+    <g filter="url(#rough)" stroke="#2b2118" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <g stroke-width="3">
+        <path d="M380 44v-22M380 256v22M274 150h-22M486 150h22M305 75l-16-16M455 225l16 16M455 75l16-16M305 225l-16 16"/>
+      </g>
+      <g stroke-width="1.6" opacity=".8">
+        <path d="M340 60l-7-15M420 60l7-15M290 110l-15-7M470 110l15-7M290 190l-15 7M470 190l15 7M340 240l-7 15M420 240l7 15"/>
+      </g>
+      <circle cx="380" cy="150" r="78" fill="url(#sunFill)" stroke-width="3.5"/>
+      <circle cx="380" cy="150" r="60" stroke-width="1" stroke-dasharray="2 7" opacity=".6"/>
+      <!-- güneş gözlüğü ve gülümseme -->
+      <path d="M318 138h124" stroke-width="3.5"/>
+      <rect x="326" y="134" width="44" height="26" rx="10" fill="#2b2118" stroke-width="2"/>
+      <rect x="390" y="134" width="44" height="26" rx="10" fill="#2b2118" stroke-width="2"/>
+      <path d="M352 186q28 20 56 0" stroke-width="3.5"/>
+
+      <!-- masa lambası -->
+      <g stroke-width="2.4">
+        <path d="M20 330h110M75 330v-14M55 316h40"/>
+        <path d="M75 316L128 232L92 160"/>
+        <circle cx="128" cy="232" r="5"/><circle cx="92" cy="160" r="5"/>
+        <path d="M92 160L45 176L66 212L116 184Z" fill="#f3ead6"/>
+        <path d="M66 212q-4 12 8 12q9-2 6-14"/>
+      </g>
+      <path d="M68 214L20 320M96 206L170 320" stroke-width="1.2" stroke-dasharray="3 6" opacity=".5"/>
+
+      <!-- pikap -->
+      <g stroke-width="2.4">
+        <path d="M180 312h300v58h-300z" fill="#f3ead6"/>
+        <path d="M180 370v10h300v-10"/>
+        <ellipse cx="300" cy="338" rx="92" ry="20" fill="#2b2118"/>
+        <ellipse cx="300" cy="338" rx="70" ry="15" stroke="#f3ead6" stroke-width=".8" opacity=".5"/>
+        <ellipse cx="300" cy="338" rx="50" ry="11" stroke="#f3ead6" stroke-width=".8" opacity=".5"/>
+        <ellipse cx="300" cy="338" rx="20" ry="5" fill="#f5b82e" stroke="#f5b82e"/>
+        <path d="M452 322L420 342L392 346"/>
+        <circle cx="454" cy="320" r="7" fill="#f3ead6"/>
+        <path d="M445 360h22M445 366h16" stroke-width="1.4"/>
+      </g>
+
+      <!-- fincan -->
+      <g stroke-width="2.2">
+        <path d="M500 330h44l-5 38h-34z" fill="#f3ead6"/>
+        <path d="M544 338q18 3 5 20l-7 2"/>
+        <path d="M510 318q-6-11 3-18M524 318q-6-12 3-22M536 318q-6-11 3-18" stroke-width="1.3"/>
+      </g>
+
+      <!-- notalar -->
+      <g stroke-width="2">
+        <path d="M200 110v-48l26-7v46"/><ellipse cx="193" cy="112" rx="9" ry="6"/><ellipse cx="219" cy="102" rx="9" ry="6"/>
+        <path d="M545 250v-38"/><ellipse cx="538" cy="252" rx="8" ry="5.5"/><path d="M545 212q12 5 9 19"/>
+      </g>
+    </g>
+  </g>
+</svg>
