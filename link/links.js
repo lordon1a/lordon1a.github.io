@@ -20,7 +20,7 @@ export const LINKS = [
   { icon: 'link', title: 'Portföy', handle: 'ozgecmis.guldal.me', desc: 'Projeler, vaka çalışmaları ve iletişim', url: 'https://ozgecmis.guldal.me' },
   { icon: 'link', title: 'Sunshine Sunucu', handle: 'play.guldal.me', desc: 'Minecraft sunucusu · kurulum ve harita', url: 'https://play.guldal.me' },
   { icon: 'github', title: 'GitHub', handle: 'lordon1a', desc: 'Projeler ve kodlar', url: 'https://github.com/lordon1a' },
-  { icon: 'spotify', title: 'Spotify', handle: 'çalma listelerim', desc: 'Radyoda çalanların en iyileri', url: '' },
-  { icon: 'discord', title: 'Discord', handle: 'sunucu', desc: 'Sohbet ve topluluk', url: '' },
+  { icon: 'spotify', title: 'Spotify', handle: 'çalma listelerim', desc: 'Radyoda çalanların en iyileri', url: 'https://open.spotify.com/user/og3cgpks05ny7o9n4aombxtxe' },
+  { icon: 'discord', title: 'Discord', handle: '@kirmizibandana11', desc: 'Sohbet ve topluluk', url: '' },
   { icon: 'mail', title: 'E-posta', handle: 'yigitguldal@gmail.com', desc: 'İş birlikleri ve her şey', url: 'yigitguldal@gmail.com' },
 ];
