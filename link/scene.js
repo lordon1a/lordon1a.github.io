@@ -1,5 +1,5 @@
-// link.guldal.me — Three.js arka planı (düz, 3D değil): gökyüzü, avatarın arkasından doğan güneş,
-// dalgalı deniz, uzak adalar, gece yıldızlar ve denizde sallanan bir lastik ördek.
+// link.guldal.me — Three.js arka planı (düz, sade): avatarın arkasında nefes alan bir güneş,
+// yavaş dönen ışık huzmeleri, akan sıcak ışık dokusu, süzülen zerreler ve film greni.
 // Renkler Sunshine Radio'daki vakitlerle aynı: <html data-phase="sabah|ogle|aksam|gece">.
 import * as THREE from 'three';
 
@@ -8,10 +8,10 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const C = (hex) => new THREE.Color(hex);
 
 const PHASES = {
-  sabah: { top: '#7fb0f0', low: '#ffd2a8', sea: '#6f8fb8', deep: '#22406b', sun: '#fff0cf', glow: '#ffc58a', rays: 0.35, stars: 0 },
-  ogle:  { top: '#2f78da', low: '#cfe7ff', sea: '#3f86c2', deep: '#0b3a6e', sun: '#ffffff', glow: '#fff1c8', rays: 0.3, stars: 0 },
-  aksam: { top: '#3b2150', low: '#ff9147', sea: '#7a3a45', deep: '#1a0e22', sun: '#ffb46a', glow: '#ff8a3d', rays: 0.55, stars: 0.12 },
-  gece:  { top: '#03050d', low: '#1a2350', sea: '#141b38', deep: '#02030a', sun: '#dfe7ff', glow: '#8fa6ff', rays: 0.08, stars: 1 },
+  sabah: { top: '#f3b8a4', low: '#fde7cf', haze: '#ffc9a3', sun: '#fff4dc', glow: '#ffb27a', rays: 0.45, stars: 0, grain: 0.035 },
+  ogle:  { top: '#f6c55a', low: '#fff3d6', haze: '#ffe08a', sun: '#ffffff', glow: '#ffcf4a', rays: 0.4, stars: 0, grain: 0.03 },
+  aksam: { top: '#2a1233', low: '#e8683a', haze: '#ff8a3d', sun: '#ffd49a', glow: '#ff7a2e', rays: 0.6, stars: 0.1, grain: 0.045 },
+  gece:  { top: '#03040b', low: '#161b3d', haze: '#3a4a9a', sun: '#e6ecff', glow: '#7f95ff', rays: 0.22, stars: 1, grain: 0.028 },
 };
 const phaseKey = () => (PHASES[root.dataset.phase] ? root.dataset.phase : 'aksam');
 
@@ -35,246 +35,121 @@ if (renderer) {
     uRes: { value: new THREE.Vector2(1, 1) },
     uSun: { value: new THREE.Vector2() },
     uR: { value: 100 },
-    uHorizon: { value: 300 },
-    uTop: { value: C('#000') }, uLow: { value: C('#000') }, uSea: { value: C('#000') }, uDeep: { value: C('#000') },
+    uTop: { value: C('#000') }, uLow: { value: C('#000') }, uHaze: { value: C('#000') },
     uSunC: { value: C('#fff') }, uGlow: { value: C('#fff') },
-    uRays: { value: 0.4 }, uStars: { value: 0 },
+    uRays: { value: 0.4 }, uStars: { value: 0 }, uGrain: { value: 0.04 },
   };
   const P = {};
   for (const [k, v] of Object.entries(PHASES[phaseKey()])) P[k] = typeof v === 'string' ? C(v) : v;
 
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
     uniforms: U,
     depthTest: false,
     depthWrite: false,
     vertexShader: 'void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: /* glsl */ `
-      uniform float uTime, uR, uHorizon, uRays, uStars;
+      uniform float uTime, uR, uRays, uStars, uGrain;
       uniform vec2 uRes, uSun;
-      uniform vec3 uTop, uLow, uSea, uDeep, uSunC, uGlow;
+      uniform vec3 uTop, uLow, uHaze, uSunC, uGlow;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
       float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
       float fbm(vec2 p){ float f = 0.0, a = 0.5; mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
         for (int i = 0; i < 5; i++) { f += a * noise(p); p = m * p; a *= 0.5; } return f; }
-      float waves(vec2 p){
-        return fbm(vec2(p.x * 0.7, p.y * 2.2) + vec2(uTime * 0.04, -uTime * 0.32))
-             + 0.45 * fbm(vec2(p.x * 1.9 + p.y * 0.6, p.y * 4.3) + vec2(-uTime * 0.08, -uTime * 0.55));
-      }
       void main(){
         vec2 fc = gl_FragCoord.xy;
+        vec2 uv = fc / uRes;
         float H = uRes.y;
         vec2 d = fc - uSun;
         float dist = length(d) / uR;
-        vec3 col;
-        if (fc.y >= uHorizon) {
-          float t = clamp((fc.y - uHorizon) / max(H - uHorizon, 1.0), 0.0, 1.0);
-          col = mix(uLow, uTop, smoothstep(0.0, 0.85, t));
-          // yıldızlar
-          vec2 cell = floor(fc / 3.0);
-          float hs = hash(cell);
-          col += vec3(0.9, 0.93, 1.0) * step(0.9975, hs) * (0.55 + 0.45 * sin(uTime * (1.5 + hs * 3.0) + hs * 90.0)) * uStars * smoothstep(0.05, 0.3, t);
-          // güneş: disk + hale + dönen ışınlar
-          col += uSunC * smoothstep(1.015, 0.985, dist) * 1.2;
-          col += uGlow * 0.55 * exp(-dist * 0.9) + uGlow * 0.25 * exp(-dist * 0.25);
-          float ang = atan(d.y, d.x) + uTime * 0.012;
-          float r1 = noise(vec2(cos(ang), sin(ang)) * 9.0 + uTime * 0.05);
-          float r2 = noise(vec2(cos(ang), sin(ang)) * 23.0 - uTime * 0.07);
-          col += uGlow * pow(r1 * 0.7 + r2 * 0.3, 3.0) * smoothstep(1.0, 1.5, dist) * exp(-dist * 0.3) * uRays;
-          // ince bulut şeritleri
-          vec2 uv = fc / uRes;
-          float c = fbm(vec2(uv.x * 2.2 + uTime * 0.006, uv.y * 11.0));
-          col = mix(col, col * 1.06 + uGlow * 0.08, smoothstep(0.55, 0.85, c) * (1.0 - t) * 0.7);
-        } else {
-          // deniz: perspektifli dalga normali → gökyüzü yansıması + güneş parıltısı
-          float depth = clamp((uHorizon - fc.y) / max(uHorizon, 1.0), 0.0, 1.0);
-          float z = min(1.0 / (depth + 0.035), 26.0);
-          float zz = z + 2.5; // yakındaki dalgalar da ince kalsın
-          vec2 p = vec2((fc.x - uSun.x) / H * zz * 3.2, zz * 1.1);
-          float e = 0.035;
-          float h0 = waves(p);
-          float hx = waves(p + vec2(e, 0.0)) - h0;
-          float hz = waves(p + vec2(0.0, e)) - h0;
-          float detail = smoothstep(0.0, 0.3, depth) * 0.85 + 0.15;
-          vec3 N = normalize(vec3(-hx / e * 0.22 * detail, 1.0, -hz / e * 0.22 * detail));
-          vec3 V = normalize(vec3((fc.x - uSun.x) / H * 1.4, -(0.015 + depth * 0.55), 1.0));
-          vec3 R = reflect(V, N);
-          vec3 S = normalize(vec3(0.0, max((uSun.y - uHorizon) / H * 1.4, 0.02), 1.0));
-          float fres = 0.04 + 0.96 * pow(1.0 - max(dot(-V, N), 0.0), 5.0);
-          vec3 water = mix(uSea, uDeep, smoothstep(0.0, 0.9, depth));
-          col = mix(water, mix(uLow, uTop, clamp(R.y * 2.5, 0.0, 1.0)), fres);
-          float rs = max(dot(R, S), 0.0);
-          col += uSunC * (pow(rs, 900.0) * 5.0 + pow(rs, 90.0) * 0.45);
-          col = mix(col, uLow * 0.85, exp(-depth * 22.0) * 0.6);
-        }
-        // uzak adalar (sol tarafta, pusla)
-        float wx = fc.x / uRes.x;
-        float x1 = (wx - 0.16) / 0.13;
-        float x2 = (wx - 0.3) / 0.07;
-        float hill = max(pow(max(1.0 - abs(x1), 0.0), 1.5) * (0.85 + 0.3 * noise(vec2(fc.x * 0.02, 1.0))), 0.55 * pow(max(1.0 - abs(x2), 0.0), 1.3));
-        if (fc.y >= uHorizon && fc.y < uHorizon + hill * H * 0.045) col = mix(col, mix(uDeep, uLow, 0.35), 0.85);
-        // köşeleri hafif karart, yazılar okunaklı kalsın
-        vec2 q = fc / uRes - vec2(0.5, 0.55);
-        col *= 0.8 + 0.2 * smoothstep(0.95, 0.2, length(q * vec2(1.0, 1.2)));
+
+        // zemin: yukarıdan aşağı yumuşak geçiş, güneşe doğru ısınır
+        vec3 col = mix(uLow, uTop, smoothstep(0.0, 1.0, length((fc - uSun) / H) * 0.9));
+
+        // akan ışık dokusu (alan bükülmüş fbm, çok düşük kontrast)
+        vec2 q = fc / H * 1.6;
+        vec2 w = vec2(fbm(q + vec2(0.0, uTime * 0.03)), fbm(q + vec2(5.2, 1.3) - uTime * 0.025));
+        float flow = fbm(q + w * 1.8 + uTime * 0.015);
+        col = mix(col, uHaze, smoothstep(0.35, 0.85, flow) * 0.32);
+
+        // ışık huzmeleri: güneşten dışarı, çok yavaş döner
+        float ang = atan(d.y, d.x);
+        vec2 dir = vec2(cos(ang), sin(ang));
+        float r1 = noise(dir * 5.0 + uTime * 0.04);
+        float r2 = noise(dir * 13.0 - uTime * 0.06 + 7.0);
+        float rays = pow(r1 * 0.65 + r2 * 0.35, 2.4);
+        col += uGlow * rays * smoothstep(0.9, 1.6, dist) * exp(-dist * 0.22) * uRays;
+
+        // güneş: nefes alan hale + yumuşak disk
+        float breathe = 1.0 + 0.04 * sin(uTime * 0.8);
+        col += uGlow * 0.55 * exp(-dist * 1.1 / breathe);
+        col += uGlow * 0.22 * exp(-dist * 0.28);
+        col += uSunC * smoothstep(1.02 * breathe, 0.9, dist) * 0.9;
+
+        // gece yıldızları
+        vec2 cell = floor(fc / 3.0);
+        float hs = hash(cell);
+        col += vec3(0.9, 0.93, 1.0) * step(0.9972, hs) * (0.5 + 0.5 * sin(uTime * (1.2 + hs * 3.0) + hs * 80.0)) * uStars * smoothstep(1.4, 3.0, dist);
+
+        // köşe karartması + film greni
+        vec2 v = uv - vec2(0.5, 0.6);
+        col *= 0.78 + 0.22 * smoothstep(0.95, 0.2, length(v * vec2(1.0, 1.2)));
+        col += (hash(fc + fract(uTime) * 91.7) - 0.5) * uGrain;
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
   }));
-  sky.frustumCulled = false;
-  sky.renderOrder = -1;
-  scene.add(sky);
+  bg.frustumCulled = false;
+  scene.add(bg);
 
-  /* ---------- Lastik ördek ---------- */
-  function duckCanvas(reflection) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const g = c.getContext('2d');
-    g.lineWidth = 7;
-    g.strokeStyle = '#2b1a0a';
-    g.lineJoin = 'round';
-    const body = g.createRadialGradient(110, 150, 10, 128, 170, 110);
-    body.addColorStop(0, '#fff2a0');
-    body.addColorStop(0.6, '#ffd02e');
-    body.addColorStop(1, '#f0a818');
-    // gövde
-    g.fillStyle = body;
-    g.beginPath();
-    g.moveTo(40, 150);
-    g.quadraticCurveTo(20, 110, 52, 118); // kuyruk
-    g.quadraticCurveTo(70, 132, 96, 130);
-    g.quadraticCurveTo(150, 128, 196, 150);
-    g.quadraticCurveTo(222, 170, 200, 202);
-    g.quadraticCurveTo(170, 226, 110, 224);
-    g.quadraticCurveTo(52, 222, 40, 150);
-    g.fill();
-    g.stroke();
-    // kanat
-    g.beginPath();
-    g.moveTo(92, 168);
-    g.quadraticCurveTo(128, 150, 158, 176);
-    g.quadraticCurveTo(128, 200, 92, 168);
-    g.fillStyle = '#f5b91f';
-    g.fill();
-    g.stroke();
-    // kafa
-    g.fillStyle = body;
-    g.beginPath();
-    g.arc(170, 96, 46, 0, Math.PI * 2);
-    g.fill();
-    g.stroke();
-    // gaga
-    g.fillStyle = '#ff7a1a';
-    g.beginPath();
-    g.moveTo(206, 100);
-    g.quadraticCurveTo(250, 98, 242, 118);
-    g.quadraticCurveTo(222, 130, 204, 118);
-    g.closePath();
-    g.fill();
-    g.stroke();
-    // göz
-    g.fillStyle = '#2b1a0a';
-    g.beginPath();
-    g.arc(184, 84, 8, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#fff';
-    g.beginPath();
-    g.arc(187, 81, 3, 0, Math.PI * 2);
-    g.fill();
-    // parlama
-    g.strokeStyle = 'rgba(255,255,255,0.8)';
-    g.lineWidth = 6;
-    g.lineCap = 'round';
-    g.beginPath();
-    g.arc(160, 86, 26, Math.PI * 1.1, Math.PI * 1.45);
-    g.stroke();
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }
-  const duckTex = duckCanvas();
-  const duck = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: duckTex, transparent: true, depthTest: false }));
-  const duckShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: duckTex, transparent: true, opacity: 0.22, color: 0x221a30, depthTest: false }));
-  scene.add(duckShadow, duck);
-  const DUCK = { x: 0, y: 0, size: 80, hop: 0 };
+  /* ---------- süzülen ışık zerreleri ---------- */
+  const COUNT = innerWidth < 700 ? 40 : 80;
+  const pos = new Float32Array(COUNT * 3);
+  const seed = new Float32Array(COUNT);
+  for (let i = 0; i < COUNT; i++) { pos.set([Math.random(), Math.random(), 0], i * 3); seed[i] = Math.random(); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  const motes = new THREE.Points(geo, new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uRes: U.uRes, uGlow: U.uGlow, uDpr: { value: 1 } },
+    transparent: true, depthTest: false, blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */ `
+      uniform float uTime, uDpr; uniform vec2 uRes; attribute float aSeed; varying float vA;
+      void main(){
+        vec2 p = position.xy;
+        p.y = fract(p.y + uTime * (0.006 + aSeed * 0.012));
+        p.x += sin(uTime * 0.2 + aSeed * 40.0) * 0.02;
+        vA = sin(p.y * 3.1416) * (0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * (0.6 + aSeed) + aSeed * 30.0)));
+        gl_PointSize = (2.0 + aSeed * 5.0) * uDpr;
+        gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uGlow; varying float vA;
+      void main(){ float d = length(gl_PointCoord - 0.5); gl_FragColor = vec4(mix(uGlow, vec3(1.0), 0.5) * smoothstep(0.5, 0.0, d) * vA * 0.7, 1.0); }`,
+  }));
+  motes.frustumCulled = false;
+  scene.add(motes);
 
-  /* ---------- Yerleşim: güneş avatarın arkasında, ufuk hemen altında ---------- */
+  /* ---------- yerleşim: güneş avatarın arkasında, fareyi hafifçe izler ---------- */
   const avatar = document.querySelector('.polaroid');
+  const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   let dpr = 1;
   function layout() {
     dpr = Math.min(devicePixelRatio || 1, 1.5);
-    const w = innerWidth;
-    const h = innerHeight;
     renderer.setPixelRatio(dpr);
-    renderer.setSize(w, h, false);
-    camera.right = w;
-    camera.top = h;
+    renderer.setSize(innerWidth, innerHeight, false);
+    camera.right = innerWidth;
+    camera.top = innerHeight;
     camera.updateProjectionMatrix();
-    U.uRes.value.set(w * dpr, h * dpr);
-    const mobile = w < 700;
-    DUCK.size = mobile ? 50 : 92;
+    U.uRes.value.set(innerWidth * dpr, innerHeight * dpr);
+    motes.material.uniforms.uDpr.value = dpr;
   }
-
-  function place() {
-    const r = avatar.getBoundingClientRect();
-    const h = innerHeight;
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const R = r.width * 0.64;
-    const horizon = r.bottom + 18;
-    U.uSun.value.set(cx * dpr, (h - cy) * dpr);
-    U.uR.value = R * dpr;
-    U.uHorizon.value = Math.max(0, (h - horizon) * dpr);
-    // ördek: ufkun altında, deniz üstünde
-    const seaTop = h - horizon;
-    if (innerWidth < 700) {
-      // mobilde: solda, ufkun hemen altında (kartların üstünde kalsın)
-      DUCK.x = innerWidth * 0.13;
-      DUCK.y = seaTop - DUCK.size * 0.75;
-    } else {
-      DUCK.x = innerWidth * 0.83;
-      DUCK.y = Math.max(40, seaTop * 0.55);
-    }
-  }
-
-  /* ---------- Vak! ---------- */
-  let audio;
-  function quack() {
-    try {
-      audio = audio || new AudioContext();
-      const now = audio.currentTime;
-      for (const [start, f0] of [[0, 820], [0.2, 760]]) {
-        const osc = audio.createOscillator();
-        const filter = audio.createBiquadFilter();
-        const gain = audio.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(f0, now + start);
-        osc.frequency.exponentialRampToValueAtTime(f0 * 0.45, now + start + 0.16);
-        filter.type = 'bandpass';
-        filter.frequency.value = 1300;
-        filter.Q.value = 3;
-        gain.gain.setValueAtTime(0.0001, now + start);
-        gain.gain.exponentialRampToValueAtTime(0.35, now + start + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + start + 0.17);
-        osc.connect(filter).connect(gain).connect(audio.destination);
-        osc.start(now + start);
-        osc.stop(now + start + 0.2);
-      }
-    } catch {}
-    DUCK.hop = 1;
-    dispatchEvent(new CustomEvent('link:toast', { detail: 'vak! 🦆' }));
-  }
-  const onDuck = (e) => {
-    const h = innerHeight;
-    const dx = e.clientX - DUCK.x;
-    const dy = (h - e.clientY) - DUCK.y;
-    return Math.hypot(dx, dy) < DUCK.size * 0.5;
-  };
-  addEventListener('click', (e) => { if (!e.target.closest('a, button') && onDuck(e)) quack(); });
   addEventListener('pointermove', (e) => {
-    document.body.style.cursor = !e.target.closest('a, button') && onDuck(e) ? 'pointer' : '';
+    mouse.tx = (e.clientX / innerWidth - 0.5) * 2;
+    mouse.ty = (e.clientY / innerHeight - 0.5) * 2;
   });
 
-  /* ---------- Döngü ---------- */
+  /* ---------- döngü ---------- */
   let running = false;
   let last = performance.now();
   let time = 0;
@@ -283,7 +158,7 @@ if (renderer) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
-    time += dt * (reduced ? 0.2 : 1);
+    time += dt * (reduced ? 0.15 : 1);
 
     const target = PHASES[phaseKey()];
     const k = Math.min(dt * 1.5, 1);
@@ -291,24 +166,21 @@ if (renderer) {
       if (typeof v === 'string') P[key].lerp(C(v), k);
       else P[key] += (v - P[key]) * k;
     }
-    U.uTop.value.copy(P.top); U.uLow.value.copy(P.low); U.uSea.value.copy(P.sea); U.uDeep.value.copy(P.deep);
+    U.uTop.value.copy(P.top); U.uLow.value.copy(P.low); U.uHaze.value.copy(P.haze);
     U.uSunC.value.copy(P.sun); U.uGlow.value.copy(P.glow);
-    U.uRays.value = P.rays; U.uStars.value = P.stars;
+    U.uRays.value = P.rays; U.uStars.value = P.stars; U.uGrain.value = P.grain;
     U.uTime.value = time;
 
-    place();
-    DUCK.hop *= Math.pow(0.04, dt);
-    const bob = Math.sin(time * 1.6) * 4 + Math.abs(Math.sin(time * 14)) * 26 * DUCK.hop;
-    duck.position.set(DUCK.x, DUCK.y + bob, 1);
-    duck.scale.set(DUCK.size, DUCK.size, 1);
-    duck.rotation.z = Math.sin(time * 1.25) * 0.07;
-    duckShadow.position.set(DUCK.x, DUCK.y - DUCK.size * 0.62 - bob * 0.3, 0.5);
-    duckShadow.scale.set(DUCK.size, -DUCK.size * 0.55, 1);
-    duckShadow.rotation.z = -duck.rotation.z;
+    mouse.x += (mouse.tx - mouse.x) * Math.min(dt * 2, 1);
+    mouse.y += (mouse.ty - mouse.y) * Math.min(dt * 2, 1);
+    const r = avatar.getBoundingClientRect();
+    const cx = r.left + r.width / 2 + mouse.x * 18;
+    const cy = r.top + r.height / 2 + mouse.y * 12;
+    U.uSun.value.set(cx * dpr, (innerHeight - cy) * dpr);
+    U.uR.value = r.width * 0.62 * dpr;
 
     renderer.render(scene, camera);
   }
-
   function setRunning(on) {
     on = on && !document.hidden;
     if (on === running) return;

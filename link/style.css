@@ -19,28 +19,28 @@
 
 /* akşam (varsayılan) */
 :root, [data-phase="aksam"] {
-  --bg: #3b2150;
+  --bg: #2a1233;
   --ink: #1e110b;
   --ink-soft: #3d2215;
   --halo: rgba(255, 200, 150, .55);
   --shadow: #1e110b;
-  --sky: linear-gradient(180deg, #3b2150, #c44a4a 38%, #ff9147 52%, #7a3a45 53%, #1a0e22);
+  --sky: radial-gradient(60% 45% at 50% 14%, #ffd49a, #e8683a 45%, #2a1233);
 }
 [data-phase="sabah"] {
-  --bg: #8db8f2;
+  --bg: #f3b8a4;
   --ink: #24160c;
   --ink-soft: #4d3322;
   --halo: rgba(255, 245, 230, .6);
   --shadow: #24160c;
-  --sky: linear-gradient(180deg, #7fb0f0, #ffd2a8 52%, #6f8fb8 53%, #22406b);
+  --sky: radial-gradient(60% 45% at 50% 14%, #fff4dc, #fde7cf 45%, #f3b8a4);
 }
 [data-phase="ogle"] {
-  --bg: #3d82e0;
+  --bg: #f6c55a;
   --ink: #0e1f33;
   --ink-soft: #2c4663;
   --halo: rgba(255, 255, 255, .6);
   --shadow: #0e1f33;
-  --sky: linear-gradient(180deg, #2f78da, #cfe7ff 52%, #3f86c2 53%, #0b3a6e);
+  --sky: radial-gradient(60% 45% at 50% 14%, #ffffff, #fff3d6 45%, #f6c55a);
 }
 [data-phase="gece"] {
   --bg: #03050d;
@@ -48,7 +48,7 @@
   --ink-soft: #b6bfe6;
   --halo: rgba(3, 5, 16, .9);
   --shadow: #000;
-  --sky: linear-gradient(180deg, #03050d, #1a2350 52%, #141b38 53%, #02030a);
+  --sky: radial-gradient(60% 45% at 50% 14%, #e6ecff, #161b3d 40%, #03040b);
 }
 
 * { box-sizing: border-box; }
@@ -177,7 +177,10 @@ h1 {
   font: 500 12px/1 var(--font-mono); color: #f7ecda;
   animation: rise .8s .8s var(--ease) both;
 }
-.foot #clock { opacity: .8; }
+.foot #clock {
+  padding: 8px 12px; border-radius: 999px; background: rgba(30, 22, 16, .75);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
 .chip {
   border: 1px solid rgba(255, 214, 150, .25); background: rgba(30, 22, 16, .75); color: #f7ecda;
   border-radius: 999px; padding: 8px 14px; font: 500 12px/1 var(--font-mono);

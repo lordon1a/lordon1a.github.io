@@ -45,7 +45,7 @@ function render() {
 
 /* ---------- Günün vakti (radyodakiyle aynı) ---------- */
 const PHASES = { sabah: 'sabah', ogle: 'öğle', aksam: 'akşam', gece: 'gece' };
-const THEME_COLOR = { sabah: '#8db8f2', ogle: '#3d82e0', aksam: '#3b2150', gece: '#03050d' };
+const THEME_COLOR = { sabah: '#f3b8a4', ogle: '#f6c55a', aksam: '#2a1233', gece: '#03040b' };
 let chosen = store.get('phase', 'auto');
 
 function phaseByClock() {
