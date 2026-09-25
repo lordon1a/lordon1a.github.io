@@ -157,85 +157,73 @@ function circleText(g, text, cx, cy, r, font, color) {
   g.restore();
 }
 
-function drawLabel(img, title) {
+// No.1 — Siyah Bayrak plak etiketi: siyah zemin, dalgalı bayrak logosu, NO.1
+const logoImg = new Image();
+logoImg.src = 'siyahbayrak-logo.jpg';
+let labelTitle = '';
+
+function drawLabel(title = labelTitle) {
+  labelTitle = title;
   const g = labelCanvas.getContext('2d');
   const s = 1024;
   const c = s / 2;
   g.clearRect(0, 0, s, s);
-  const grad = g.createRadialGradient(c, c * 0.8, 0, c, c, c);
-  grad.addColorStop(0, '#ffd66b');
-  grad.addColorStop(0.7, '#f58a1f');
-  grad.addColorStop(1, '#d9531a');
+  const grad = g.createRadialGradient(c * 0.8, c * 0.7, 0, c, c, c);
+  grad.addColorStop(0, '#1b1b1d');
+  grad.addColorStop(1, '#050506');
   g.fillStyle = grad;
   g.beginPath();
   g.arc(c, c, c, 0, Math.PI * 2);
   g.fill();
 
-  // güneş ışınları
-  g.save();
-  g.translate(c, c);
-  for (let i = 0; i < 36; i++) {
-    g.rotate((Math.PI * 2) / 36);
-    g.fillStyle = i % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(120,30,0,0.06)';
+  // ince baskı halkaları
+  g.strokeStyle = 'rgba(255,255,255,0.18)';
+  g.lineWidth = 3;
+  for (const r of [c * 0.96, c * 0.9]) {
     g.beginPath();
-    g.moveTo(0, 0);
-    g.lineTo(c, -c * 0.045);
-    g.lineTo(c, c * 0.045);
-    g.fill();
+    g.arc(c, c, r, 0, Math.PI * 2);
+    g.stroke();
   }
-  g.restore();
 
-  const ir = s * 0.27;
-  if (img) {
+  // bayrak logosu (siyah zeminli görsel; 'screen' ile sadece beyazı kalır)
+  if (logoImg.complete && logoImg.naturalWidth) {
+    const w = s * 0.62;
+    const h = w * (logoImg.naturalHeight / logoImg.naturalWidth);
     g.save();
-    g.beginPath();
-    g.arc(c, c, ir, 0, Math.PI * 2);
-    g.clip();
-    // hqdefault 480x360, üst-alt siyah bantlı: ortadaki kareyi kırp
-    const side = Math.min(img.width, img.height * 0.75);
-    g.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, c - ir, c - ir, ir * 2, ir * 2);
+    g.globalCompositeOperation = 'screen';
+    g.drawImage(logoImg, c - w / 2, c - h - s * 0.05, w, h);
     g.restore();
-  } else {
-    const sg = g.createRadialGradient(c, c, 0, c, c, ir);
-    sg.addColorStop(0, '#fff8dc');
-    sg.addColorStop(0.55, '#ffc23d');
-    sg.addColorStop(1, '#ff8a1c');
-    g.fillStyle = sg;
-    g.beginPath();
-    g.arc(c, c, ir, 0, Math.PI * 2);
-    g.fill();
   }
-  g.lineWidth = 10;
-  g.strokeStyle = 'rgba(60,15,0,0.55)';
-  g.beginPath();
-  g.arc(c, c, ir, 0, Math.PI * 2);
-  g.stroke();
 
-  circleText(g, 'SUNSHINE RADIO  ·  33⅓ RPM  ·  STEREO', c, c, s * 0.405, '700 46px "DM Sans", sans-serif', '#3a1204');
-  const t = (title || 'yayın bekleniyor').toUpperCase();
-  const short = t.length > 34 ? t.slice(0, 33) + '…' : t;
+  g.fillStyle = '#f2f2f2';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = '700 64px "DM Sans", sans-serif';
+  g.fillText('NO.1', c, c + s * 0.12);
+  g.font = '500 26px "DM Mono", monospace';
+  g.fillStyle = 'rgba(242,242,242,0.7)';
+  g.fillText('A  ·  33⅓', c, c + s * 0.19);
+  // çalan şarkı: etiketin alt kenarında dönen yazı
+  const t = (title || 'SİYAH BAYRAK').toLocaleUpperCase('tr');
+  const short = t.length > 30 ? t.slice(0, 29) + '…' : t;
   g.save();
   g.translate(c, c);
   g.rotate(Math.PI);
-  circleText(g, short, 0, 0, s * 0.335, '600 36px "DM Sans", sans-serif', 'rgba(58,18,4,0.85)');
+  circleText(g, short, 0, 0, s * 0.39, '600 34px "DM Sans", sans-serif', 'rgba(242,242,242,0.8)');
   g.restore();
 
-  g.fillStyle = '#d8d8d8';
+  g.fillStyle = '#cfcfd2';
   g.beginPath();
   g.arc(c, c, 16, 0, Math.PI * 2);
   g.fill();
   labelTex.needsUpdate = true;
 }
+logoImg.onload = () => drawLabel();
 
 let labelToken = 0;
 function setTrack(videoId, title) {
-  const token = ++labelToken;
-  drawLabel(null, title);
-  if (!videoId) return;
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => { if (token === labelToken) drawLabel(img, title); };
-  img.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  labelToken++;
+  drawLabel(title || '');
 }
 
 /* ---------------------------------------------------------
@@ -338,6 +326,13 @@ if (renderer) {
       float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
       float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
         return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
+      float fbm(vec2 p){ float f = 0.0, a = 0.5; mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
+        for (int i = 0; i < 5; i++) { f += a * noise(p); p = m * p; a *= 0.5; } return f; }
+      // Yatayda uzamış dalgalar + ince kırışıklar
+      float waves(vec2 p){
+        return fbm(vec2(p.x * 0.7, p.y * 2.2) + vec2(uTime * 0.04, -uTime * 0.32))
+             + 0.45 * fbm(vec2(p.x * 1.9 + p.y * 0.6, p.y * 4.3) + vec2(-uTime * 0.08, -uTime * 0.55));
+      }
       void main(){
         vec2 d = vP - uSunPos;
         float dist = length(d) / uSunR;
@@ -355,18 +350,26 @@ if (renderer) {
           float c = noise(vec2(vP.x * 0.15 + uTime * 0.01, vP.y * 1.6));
           col = mix(col, mix(col, uLow * 1.2, 0.5), smoothstep(0.55, 0.8, c) * (1.0 - t) * 0.6);
         } else {
+          // Perspektifli dalga alanı: normal → gökyüzü yansıması (fresnel) + güneş parıltısı
           float depth = clamp((uHorizon - vP.y) / (uSpan * 0.6), 0.0, 1.0);
-          col = mix(uSea, uDeep, smoothstep(0.0, 0.8, depth));
-          float z = min(1.0 / (depth + 0.05), 7.0); // ufukta aşırı sıklaşıp kareli görünmesin
-          float dx = (vP.x - uSunPos.x) / uSunR;
-          float column = exp(-pow(dx / (0.9 + depth * 2.0), 2.0));
-          // yatay parıltı çizgileri (dalgaların üstünde)
-          float a = sin(z * 22.0 - uTime * 1.1 + noise(vec2(dx * 5.0, z * 2.0)) * 2.5);
-          float b = smoothstep(0.5, 0.9, noise(vec2(dx * 9.0 / (0.6 + depth * 3.0), z * 5.0 + uTime * 0.35)));
-          float w = pow(max(a, 0.0), 6.0) * b;
-          col += uSun * column * w * 2.2 * (1.0 - depth * 0.5);
-          col += uSun * column * 0.12;
-          col += uLow * 0.5 * exp(-depth * 18.0);
+          float z = min(1.0 / (depth + 0.035), 26.0);
+          vec2 p = vec2((vP.x - uSunPos.x) / uSpan * z * 3.2, z * 1.1);
+          float e = 0.035;
+          float h0 = waves(p);
+          float hx = waves(p + vec2(e, 0.0)) - h0;
+          float hz = waves(p + vec2(0.0, e)) - h0;
+          float detail = smoothstep(0.0, 0.3, depth) * 0.85 + 0.15; // ufukta düzleşsin, kıpırdamasın
+          vec3 N = normalize(vec3(-hx / e * 0.22 * detail, 1.0, -hz / e * 0.22 * detail));
+          vec3 V = normalize(vec3((vP.x - uSunPos.x) / uSpan * 1.4, -(0.015 + depth * 0.55), 1.0));
+          vec3 R = reflect(V, N);
+          vec3 S = normalize(vec3(0.0, max((uSunPos.y - uHorizon) / uSpan * 1.4, 0.02), 1.0));
+          float fres = 0.04 + 0.96 * pow(1.0 - max(dot(-V, N), 0.0), 5.0);
+          vec3 water = mix(uSea, uDeep, smoothstep(0.0, 0.9, depth));
+          vec3 skyR = mix(uLow, uTop, clamp(R.y * 2.5, 0.0, 1.0));
+          col = mix(water, skyR, fres);
+          float rs = max(dot(R, S), 0.0);
+          col += uSun * (pow(rs, 900.0) * 7.0 + pow(rs, 90.0) * 0.5);
+          col = mix(col, uLow * 0.85, exp(-depth * 22.0) * 0.6); // ufuk pusu
         }
 
         // uzaktaki adalar (pusla birlikte)
@@ -377,21 +380,6 @@ if (renderer) {
         float hill = max(pow(max(1.0 - abs(x1), 0.0), 1.5) * (0.85 + 0.3 * noise(vec2(vP.x * 2.0, 1.0))), 0.6 * pow(max(1.0 - abs(x2), 0.0), 1.3));
         if (vP.y >= uHorizon && vP.y < uHorizon + hill * uSpan * 0.07) col = mix(col, haze, 0.85);
 
-        // yavaşça geçen yelkenli
-        float bs = uSpan * 0.03;
-        float range = vw + bs * 8.0;
-        float bx = uViewX.x - bs * 4.0 + mod(uTime * 0.12 + vw * 0.55, range);
-        float by = uHorizon - uSpan * 0.035;
-        float bob = sin(uTime * 1.3) * bs * 0.04;
-        float ry = vP.y - by - bob;
-        float rx = vP.x - bx;
-        float hull = step(-bs * 0.28, ry) * step(ry, 0.0) * step(abs(rx), bs * (1.1 + ry / bs * 1.2));
-        float h = ry / (bs * 1.7);
-        float sail = step(0.02, h) * step(h, 1.0) * step(0.0, rx) * step(rx, bs * 0.9 * (1.0 - h));
-        float jib = step(0.02, h) * step(h, 0.8) * step(rx, -bs * 0.06) * step(-bs * 0.7 * (1.0 - h / 0.8), rx);
-        float mast = step(abs(rx + bs * 0.03), bs * 0.03) * step(0.0, ry) * step(ry, bs * 1.8);
-        col = mix(col, mix(uDeep, uSun, 0.55), clamp(sail + jib, 0.0, 1.0));
-        col = mix(col, uDeep * 0.5, clamp(hull + mast, 0.0, 1.0));
 
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
@@ -482,27 +470,52 @@ if (renderer) {
   scene.add(tt);
   const shadowy = (m) => { m.castShadow = true; m.receiveShadow = true; return m; };
 
-  const walnut = new THREE.MeshPhysicalMaterial({
-    map: woodTex('#5a311b', '#2e170b', '#8a5230', 1), roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.25,
-  });
-  const alu = new THREE.MeshStandardMaterial({ color: 0xc9cacf, metalness: 1, roughness: 0.42 });
+  // Piyano siyahı gövde, siyah fırçalanmış metal üst plaka
+  const pianoBlack = new THREE.MeshPhysicalMaterial({ color: 0x08080a, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.06 });
+  const brushedTex = canvasTex(512, (g, s) => {
+    g.fillStyle = '#808080';
+    g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 1400; i++) {
+      const v = 100 + Math.random() * 60;
+      g.strokeStyle = `rgba(${v},${v},${v},0.35)`;
+      g.beginPath();
+      const y = Math.random() * s;
+      g.moveTo(0, y);
+      g.lineTo(s, y + (Math.random() - 0.5) * 2);
+      g.stroke();
+    }
+  }, { srgb: false });
+  const alu = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, metalness: 0.9, roughness: 0.38 });
   const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1c1c20, metalness: 0.7, roughness: 0.35 });
   const chrome = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.12 });
 
-  const plinth = shadowy(new THREE.Mesh(new RoundedBoxGeometry(5.0, 0.6, 3.8, 4, 0.14), walnut));
+  const plinth = shadowy(new THREE.Mesh(new RoundedBoxGeometry(5.0, 0.6, 3.8, 4, 0.14), pianoBlack));
   plinth.position.y = 0.42;
   tt.add(plinth);
-  const topPlate = shadowy(new THREE.Mesh(new RoundedBoxGeometry(4.8, 0.04, 3.6, 2, 0.02), new THREE.MeshStandardMaterial({ color: 0x17171a, roughness: 0.55, metalness: 0.2 })));
+  const topPlate = shadowy(new THREE.Mesh(new RoundedBoxGeometry(4.8, 0.04, 3.6, 2, 0.02), new THREE.MeshStandardMaterial({ color: 0x151518, roughness: 0.5, roughnessMap: brushedTex, metalness: 0.75 })));
   topPlate.position.y = 0.73;
   tt.add(topPlate);
   for (const [x, z] of [[-2.1, -1.5], [2.1, -1.5], [-2.1, 1.5], [2.1, 1.5]]) {
-    const f = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.14, 32), darkMetal));
+    const f = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.14, 32), chrome));
     f.position.set(x, 0.07, z);
     tt.add(f);
   }
 
   const PC = new THREE.Vector3(-0.55, 0, 0.05); // tabla merkezi
-  const platter = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(1.66, 1.66, 0.14, 128), alu));
+  const strobeTex = canvasTex(1024, (g, s) => {
+    g.fillStyle = '#1a1a1d';
+    g.fillRect(0, 0, s, s);
+    const rows = [[0.22, 180], [0.5, 184], [0.78, 188]];
+    for (const [y, n] of rows) {
+      for (let i = 0; i < n; i++) {
+        g.fillStyle = '#b9bcc4';
+        g.fillRect((i / n) * s, y * s - 26, (s / n) * 0.5, 52);
+      }
+    }
+  });
+  strobeTex.wrapS = THREE.RepeatWrapping;
+  const platterSide = new THREE.MeshStandardMaterial({ map: strobeTex, metalness: 0.85, roughness: 0.3 });
+  const platter = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(1.66, 1.66, 0.14, 128), [platterSide, alu, alu]));
   platter.position.set(PC.x, 0.82, PC.z);
   tt.add(platter);
 
@@ -544,7 +557,7 @@ if (renderer) {
   tube.rotation.z = -Math.PI / 2;
   tube.position.x = ARM_L / 2;
   armLift.add(tube);
-  const weight = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.32, 40), darkMetal));
+  const weight = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.32, 40), chrome));
   weight.rotation.z = Math.PI / 2;
   weight.position.x = -0.42;
   armLift.add(weight);
@@ -581,6 +594,118 @@ if (renderer) {
   const YAW_OUT = yawForRadius(1.48);
   const YAW_IN = yawForRadius(0.72);
   const YAW_REST = -Math.PI / 2 - 0.05; // öne doğru park
+
+  /* ---------- Pikap ayrıntıları ---------- */
+  const TOP = 0.755; // üst plakanın yüzeyi
+  const btnMat = new THREE.MeshPhysicalMaterial({ color: 0x1c1c20, roughness: 0.3, clearcoat: 0.8, metalness: 0.3 });
+  const textTex = (text, w, h, font, color = '#e8e8ea') => canvasTex(512, (g, s) => {
+    g.clearRect(0, 0, s, s);
+    g.fillStyle = color;
+    g.font = font;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, s / 2, s / 2);
+  });
+  const printed = (text, w, x, z, font, rotY = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w), new THREE.MeshStandardMaterial({ map: textTex(text, w, w, font), transparent: true, roughness: 0.6, depthWrite: false }));
+    m.rotation.set(-Math.PI / 2, 0, rotY);
+    m.position.set(x, TOP + 0.003, z);
+    tt.add(m);
+    return m;
+  };
+
+  // start/stop ve 33/45 düğmeleri (sol ön)
+  const startBtn = shadowy(new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.06, 0.42, 2, 0.03), btnMat));
+  startBtn.position.set(-2.05, TOP + 0.02, 1.45);
+  tt.add(startBtn);
+  printed('START · STOP', 0.6, -2.05, 1.45 + 0.002, '600 44px "DM Mono", monospace').position.y = TOP + 0.055;
+  for (const [i, t] of [[0, '33'], [1, '45']]) {
+    const b = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 32), btnMat));
+    b.position.set(-1.55 + i * 0.3, TOP + 0.02, 1.52);
+    tt.add(b);
+    printed(t, 0.24, -1.55 + i * 0.3, 1.52, '700 150px "DM Sans", sans-serif').position.y = TOP + 0.047;
+  }
+  // hız ışığı (çalarken kırmızı yanar)
+  const ledMat = new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff2020, emissiveIntensity: 0 });
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), ledMat);
+  led.position.set(-1.55, TOP + 0.02, 1.3);
+  tt.add(led);
+
+  // pitch sürgüsü (sağ ön)
+  const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.01, 1.05), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9 }));
+  slot.position.set(2.15, TOP + 0.002, 0.75);
+  tt.add(slot);
+  const fader = shadowy(new THREE.Mesh(new RoundedBoxGeometry(0.24, 0.1, 0.16, 2, 0.03), chrome));
+  fader.position.set(2.15, TOP + 0.05, 0.72);
+  tt.add(fader);
+  for (let i = 0; i <= 8; i++) {
+    const tick = new THREE.Mesh(new THREE.BoxGeometry(i % 4 ? 0.06 : 0.12, 0.004, 0.012), new THREE.MeshStandardMaterial({ color: 0xcfcfd2, roughness: 0.5 }));
+    tick.position.set(2.32, TOP + 0.003, 0.28 + i * 0.118);
+    tt.add(tick);
+  }
+
+  // kol yuvası (park yeri), kaldırma kolu, anti-skate düğmesi
+  const rest = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.36, 16), chrome));
+  rest.position.set(PIV.x, TOP + 0.18, 1.1);
+  tt.add(rest);
+  const restCup = shadowy(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.06, 0.12, 2, 0.02), btnMat));
+  restCup.position.set(PIV.x, TOP + 0.37, 1.1);
+  tt.add(restCup);
+  const cueBase = shadowy(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.12), btnMat));
+  cueBase.position.set(PIV.x + 0.5, TOP + 0.07, -0.55);
+  tt.add(cueBase);
+  const cueLever = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.32, 8), chrome));
+  cueLever.position.set(PIV.x + 0.5, TOP + 0.18, -0.42);
+  cueLever.rotation.x = 1.1;
+  tt.add(cueLever);
+  const skate = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 32), chrome));
+  skate.position.set(PIV.x + 0.55, TOP + 0.04, -1.45);
+  tt.add(skate);
+
+  // iğne lambası (açılır ışık) — ucu sıcak yanar
+  const tlPost = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.34, 24), chrome));
+  tlPost.position.set(-2.15, TOP + 0.17, -1.5);
+  tt.add(tlPost);
+  const tlTip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffe2b0, emissiveIntensity: 2.2 }));
+  tlTip.position.set(-2.15, TOP + 0.36, -1.5);
+  tt.add(tlTip);
+  const tlLight = new THREE.SpotLight(0xffe2b0, 3, 4, 0.5, 0.6, 2);
+  tlLight.position.copy(tlTip.position);
+  tlLight.target.position.set(PC.x - 0.4, TOP, PC.z - 0.6);
+  tt.add(tlLight, tlLight.target);
+
+  // arka kapak menteşeleri
+  for (const x of [-1.6, 1.6]) {
+    const hinge = shadowy(new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.14, 0.12, 2, 0.03), btnMat));
+    hinge.position.set(x, TOP + 0.08, -1.93);
+    tt.add(hinge);
+  }
+
+  // ön yüzde krom plaka: NO.1 · SİYAH BAYRAK
+  const plateCanvas = document.createElement('canvas');
+  plateCanvas.width = 1024;
+  plateCanvas.height = 110;
+  const drawPlate = () => {
+    const g = plateCanvas.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 110);
+    grad.addColorStop(0, '#e4e6eb');
+    grad.addColorStop(1, '#9fa3ab');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 1024, 110);
+    g.fillStyle = '#0b0b0d';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '700 60px "DM Sans", sans-serif';
+    g.fillText('NO.1  ·  SİYAH BAYRAK', 512, 58);
+    plateTex.needsUpdate = true;
+  };
+  const plateTex = new THREE.CanvasTexture(plateCanvas);
+  plateTex.colorSpace = THREE.SRGBColorSpace;
+  drawPlate();
+  document.fonts?.ready.then(drawPlate);
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.134), new THREE.MeshStandardMaterial({ map: plateTex, metalness: 0.85, roughness: 0.3 }));
+  plate.position.set(1.2, 0.44, 1.905);
+  tt.add(plate);
 
   /* ---------- Duvarda kanla çizilmiş gülen yüz (Red John imzası) ---------- */
   const tickers = []; // her karede çağrılan küçük animasyonlar
@@ -674,18 +799,64 @@ if (renderer) {
   const sleeveArt = [
     (g, s) => { g.fillStyle = '#f2c14e'; g.fillRect(0, 0, s, s); g.fillStyle = '#e4572e'; for (let i = 0; i < 6; i++) g.fillRect(0, s * 0.55 + i * 34, s, 18); g.fillStyle = '#fff4d6'; g.beginPath(); g.arc(s / 2, s * 0.42, s * 0.22, 0, Math.PI * 2); g.fill(); },
     (g, s) => { g.fillStyle = '#1f3a5f'; g.fillRect(0, 0, s, s); g.strokeStyle = '#8ecae6'; g.lineWidth = 10; for (let i = 1; i < 8; i++) { g.beginPath(); g.arc(s * 0.3, s * 0.7, i * 50, 0, Math.PI * 2); g.stroke(); } },
-    (g, s) => { g.fillStyle = '#e9e3d5'; g.fillRect(0, 0, s, s); g.fillStyle = '#222'; g.font = 'italic 700 120px Georgia, serif'; g.fillText('Sun', 40, 180); g.fillStyle = '#c44536'; g.fillRect(40, 220, s - 80, 16); },
+    null, // en üstte: Siyah Bayrak
   ];
+  const coverTex = new THREE.TextureLoader().load('siyahbayrak-cover.jpg');
+  coverTex.colorSpace = THREE.SRGBColorSpace;
+  coverTex.anisotropy = 8;
   const sleeves = new THREE.Group();
   sleeves.position.set(3.4, 0, -1.55);
   scene.add(sleeves);
   sleeveArt.forEach((art, i) => {
-    const top = new THREE.MeshStandardMaterial({ map: canvasTex(512, art), roughness: 0.7 });
-    const edge = new THREE.MeshStandardMaterial({ color: 0xd9cfc0, roughness: 0.8 });
+    const top = new THREE.MeshStandardMaterial({ map: art ? canvasTex(512, art) : coverTex, roughness: 0.7 });
+    const edge = new THREE.MeshStandardMaterial({ color: art ? 0xd9cfc0 : 0x0a0a0a, roughness: 0.8 });
     const sl = shadowy(new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.035, 1.35), [edge, edge, top, edge, edge, edge]));
     sl.position.y = 0.02 + i * 0.037;
     sl.rotation.y = [0.25, -0.1, 0.12][i];
     sleeves.add(sl);
+  });
+
+  // Duvara dayalı Siyah Bayrak kapağı, içinden plak hafifçe çıkmış
+  const lean = new THREE.Group();
+  lean.position.set(3.9, 0, WALL_Z + T / 2 + 0.28);
+  lean.rotation.set(-0.16, -0.08, 0);
+  scene.add(lean);
+  const sleeveBlack = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.75 });
+  const leanSleeve = shadowy(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.03), [sleeveBlack, sleeveBlack, sleeveBlack, sleeveBlack, new THREE.MeshStandardMaterial({ map: coverTex, roughness: 0.7 }), sleeveBlack]));
+  leanSleeve.position.y = 0.75;
+  lean.add(leanSleeve);
+  const leanDisc = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.02, 96), new THREE.MeshPhysicalMaterial({ color: 0x0b0b0d, roughness: 0.4, clearcoat: 0.8 })));
+  leanDisc.rotation.x = Math.PI / 2;
+  leanDisc.position.set(0.55, 0.78, -0.03);
+  lean.add(leanDisc);
+
+  // Duvarda asılı siyah bayrak (rüzgârsız odada hafifçe dalgalanır)
+  const flagLogo = new THREE.TextureLoader().load('siyahbayrak-logo.jpg');
+  flagLogo.colorSpace = THREE.SRGBColorSpace;
+  flagLogo.anisotropy = 8;
+  const FLAG_W = 2.3;
+  const FLAG_H = FLAG_W * (640 / 1024) + 0.3;
+  const flagGeo = new THREE.PlaneGeometry(FLAG_W, FLAG_H, 40, 20);
+  const flagBase = flagGeo.attributes.position.array.slice();
+  const flagMat = new THREE.MeshStandardMaterial({ map: flagLogo, roughness: 0.9, side: THREE.DoubleSide });
+  flagLogo.repeat.set(1, 1);
+  const flag = shadowy(new THREE.Mesh(flagGeo, flagMat));
+  flag.position.set(-6.0, 2.75, WALL_Z + T / 2 + 0.12);
+  scene.add(flag);
+  const rod = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, FLAG_W + 0.4, 12), chrome));
+  rod.rotation.z = Math.PI / 2;
+  rod.position.set(flag.position.x, flag.position.y + FLAG_H / 2 + 0.02, flag.position.z);
+  scene.add(rod);
+  tickers.push((t) => {
+    const p = flagGeo.attributes.position.array;
+    for (let i = 0; i < p.length; i += 3) {
+      const x = flagBase[i];
+      const y = flagBase[i + 1];
+      const hang = (FLAG_H / 2 - y) / FLAG_H; // üstten uzaklık: tepede sabit
+      p[i + 2] = hang * (Math.sin(x * 2.2 + t * 1.1) * 0.06 + Math.sin(x * 5.0 - t * 1.7 + y) * 0.02);
+    }
+    flagGeo.attributes.position.needsUpdate = true;
+    flagGeo.computeVertexNormals();
   });
 
   // Lastik ördek
@@ -908,6 +1079,7 @@ if (renderer) {
     camera.lookAt(CAM_LOOK);
 
     applyPalette(dt);
+    ledMat.emissiveIntensity = state.playing ? 4 : 0.15;
     skyMat.uniforms.uTime.value = time;
     for (const f of tickers) f(time, dt);
     beamMat.uniforms.uTime.value = time;
@@ -951,8 +1123,8 @@ if (renderer) {
   new MutationObserver(layout).observe(document.getElementById('chat'), { attributes: true, attributeFilter: ['hidden'] });
   document.addEventListener('visibilitychange', () => setRunning(true));
 
-  drawLabel(null, '');
-  document.fonts?.ready.then(() => { if (labelToken === 0) drawLabel(null, ''); });
+  drawLabel('');
+  document.fonts?.ready.then(() => drawLabel());
   camera.position.copy(CAM_BASE);
   camera.lookAt(CAM_LOOK);
   layout();

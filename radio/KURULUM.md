@@ -41,7 +41,7 @@ Sayfanın arka planı Three.js ile çizilen bir oda: pencereden güneş ışığ
 
 Üstteki **vakit** düğmesiyle elle de seçilebilir.
 
-Odada ayrıca şunlar var: pencerede adalar ve geçen bir yelkenli, duvarda kanla çizilmiş Red John gülen yüzü, masada çay fincanı, sukulent, plak kapakları, lastik ördek (şarkı değişince zıplar) ve masaya kazınmış bir **11**.
+Pikap siyah; plağın etiketi No.1 — Siyah Bayrak tasarımında (`siyahbayrak-logo.jpg`, `siyahbayrak-cover.jpg`). Odada ayrıca şunlar var: pencerede adalar, duvarda kanla çizilmiş Red John gülen yüzü, duvarda asılı Siyah Bayrak bayrağı, duvara dayalı albüm kapağı, masada çay fincanı, sukulent, plak kapakları, lastik ördek (şarkı değişince zıplar) ve masaya kazınmış bir **11**.
 
 ## Özelleştirme
 - **İsim, yedek çalma listesi, emojiler, avatarlar:** `radio/config.js`
