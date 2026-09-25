@@ -1,0 +1,41 @@
+{
+  "rules": {
+    "state": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "queue": {
+      ".read": true,
+      "$id": {
+        ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid || root.child('mods').child(auth.uid).exists() || !newData.exists() || newData.child('uid').val() === data.child('uid').val())",
+        ".validate": "!newData.exists() || (newData.hasChildren(['videoId', 'title', 'uid']) && newData.child('title').isString() && newData.child('title').val().length <= 200)"
+      }
+    },
+    "chat": {
+      ".read": true,
+      ".indexOn": ["ts"],
+      "$id": {
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || root.child('mods').child(auth.uid).exists())",
+        ".validate": "!newData.exists() || (newData.child('text').isString() && newData.child('text').val().length <= 300)"
+      }
+    },
+    "presence": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "reactions": {
+      ".read": true,
+      ".indexOn": ["ts"],
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.child('emoji').isString() && newData.child('emoji').val().length <= 8"
+      }
+    },
+    "mods": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}

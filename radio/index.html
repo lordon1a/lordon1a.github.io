@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radyo</title>
+  <meta name="description" content="Birlikte dinlenen YouTube radyosu, sohbet ve şarkı önerileri.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rubik+Mono+One&family=Audiowide&family=Archivo+Black&family=Fredoka:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <main class="stage">
+    <section class="card player-card">
+      <header class="card-head">
+        <span class="brand-mark" aria-hidden="true">◆</span>
+        <h1 id="brand"></h1>
+        <span id="live" class="live">● SESSİZ</span>
+      </header>
+
+      <div class="video-wrap">
+        <div id="yt"></div>
+        <div id="empty" class="video-empty">Kuyruk boş.<br>Sohbetin üstündeki “sıradaki” kısmından şarkı ekle.</div>
+        <div id="fx" class="fx" aria-hidden="true"></div>
+      </div>
+      <p class="fine">ses youtube'dan geliyor · izlenme sanatçıya sayılıyor</p>
+
+      <div class="now">
+        <div id="disc" class="disc" aria-hidden="true"></div>
+        <div class="now-body">
+          <div class="now-top">
+            <span class="label">şu an çalıyor</span>
+            <button id="share" class="pill" type="button">𝕏 paylaş</button>
+          </div>
+          <a id="title" class="title" target="_blank" rel="noopener">—</a>
+          <div class="by">öneren: <b id="by">—</b></div>
+          <div class="votes">
+            <button id="up" class="pill" type="button" title="beğen">▲ <span>0</span></button>
+            <button id="down" class="pill" type="button" title="beğenme">▼ <span>0</span></button>
+          </div>
+          <label class="vol">
+            <span class="label">ses</span>
+            <input id="vol" type="range" min="0" max="100">
+            <b id="volv"></b>
+          </label>
+        </div>
+      </div>
+
+      <footer class="card-foot">
+        <span id="listeners">0 dinleyici</span>
+        <button id="themeBtn" class="link" type="button">tema</button>
+      </footer>
+      <p class="fine">kâr amacı gütmez · parçanın adına tıkla, youtube'da dinle</p>
+    </section>
+  </main>
+
+  <aside id="chat" class="chat">
+    <header class="chat-head">
+      <b class="chat-title">SOHBET</b>
+      <span id="chatCount" class="muted"></span>
+      <button id="chatClose" class="icon" type="button" aria-label="sohbeti kapat">✕</button>
+    </header>
+
+    <div class="queue-bar">
+      <button id="queueToggle" class="queue-next" type="button">sıradaki: <b id="nextTitle">—</b> <span class="caret">▾</span></button>
+      <button id="skip" class="skip" type="button">GEÇ 0/1</button>
+    </div>
+    <div id="queue" class="queue" hidden>
+      <form id="addForm" class="row-form">
+        <input id="addInput" placeholder="youtube linki yapıştır…" autocomplete="off">
+        <button type="submit">EKLE</button>
+      </form>
+      <ol id="queueList" class="queue-list"></ol>
+    </div>
+
+    <ol id="messages" class="messages"></ol>
+
+    <footer class="chat-foot">
+      <div class="me">
+        <span id="meAvatar" class="avatar"></span>
+        <b id="meName"></b>
+        <button id="editMe" class="link" type="button">değiştir</button>
+      </div>
+      <div id="reacts" class="reacts"></div>
+      <form id="chatForm" class="row-form">
+        <input id="chatInput" maxlength="300" placeholder="bir şey yaz…" autocomplete="off">
+        <button type="submit">YOLLA</button>
+      </form>
+    </footer>
+  </aside>
+  <button id="chatOpen" class="chat-open" type="button" hidden>💬 sohbet</button>
+
+  <dialog id="joinDlg" class="card join">
+    <form method="dialog" id="joinForm">
+      <h2>Radyoya hoş geldin</h2>
+      <label class="label" for="joinName">takma adın</label>
+      <input id="joinName" maxlength="20" required placeholder="ör. Yiğit" autocomplete="off">
+      <span class="label">avatarın</span>
+      <div id="avatarPick" class="avatar-pick"></div>
+      <span class="label">tema</span>
+      <div id="themePick" class="theme-pick"></div>
+      <button type="submit" class="big">RADYOYA GİR ▶</button>
+      <p id="demoNote" class="fine" hidden>Demo modu: Firebase ayarlanmadı, şu an sadece sen görüyorsun.</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
