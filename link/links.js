@@ -17,5 +17,5 @@ export const LINKS = [
   { icon: 'github', title: 'GitHub', handle: 'lordon1a', desc: 'Projeler ve kodlar', url: 'https://github.com/lordon1a' },
   { icon: 'spotify', title: 'Spotify', handle: 'çalma listelerim', desc: 'Radyoda çalanların en iyileri', url: '' },
   { icon: 'discord', title: 'Discord', handle: 'sunucu', desc: 'Sohbet ve topluluk', url: '' },
-  { icon: 'mail', title: 'E-posta', handle: 'merhaba@guldal.me', desc: 'İş birlikleri ve her şey', url: '' },
+  { icon: 'mail', title: 'E-posta', handle: 'yigitguldal@gmail.com', desc: 'İş birlikleri ve her şey', url: 'yigitguldal@gmail.com' },
 ];
