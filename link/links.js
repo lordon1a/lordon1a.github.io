@@ -2,7 +2,8 @@
 // url boş bırakılan link gösterilmez.
 export const PROFILE = {
   name: 'Güldal',
-  eyebrow: 'LINK.GULDAL.ME',
+  // Etiket, sayfanın açıldığı alan adını gösterir: guldal.me / link.guldal.me
+  eyebrow: (typeof location === 'undefined' ? 'guldal.me' : location.host).toUpperCase(),
   tagline: '> sunshine, plaklar ve biraz kod',
   // Kendi fotoğrafını koymak için dosyayı link/ klasörüne at ve adını yaz: 'avatar.jpg'
   avatar: '',
