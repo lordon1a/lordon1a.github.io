@@ -157,10 +157,11 @@ function circleText(g, text, cx, cy, r, font, color) {
   g.restore();
 }
 
-// No.1 — Siyah Bayrak plak etiketi: siyah zemin, dalgalı bayrak logosu, NO.1
+// Plak etiketi: siyah zemin, ortada çalan şarkının kapağı (yoksa Siyah Bayrak logosu)
 const logoImg = new Image();
 logoImg.src = 'siyahbayrak-logo.jpg';
 let labelTitle = '';
+let coverImg = null; // çalan şarkının YouTube kapağı
 
 function drawLabel(title = labelTitle) {
   labelTitle = title;
@@ -185,24 +186,32 @@ function drawLabel(title = labelTitle) {
     g.stroke();
   }
 
-  // bayrak logosu (siyah zeminli görsel; 'screen' ile sadece beyazı kalır)
-  if (logoImg.complete && logoImg.naturalWidth) {
+  // ortada çalan şarkının kapağı; yoksa Siyah Bayrak logosu
+  const ir = s * 0.28;
+  if (coverImg) {
+    g.save();
+    g.beginPath();
+    g.arc(c, c, ir, 0, Math.PI * 2);
+    g.clip();
+    // hqdefault 480x360, üst-alt siyah bantlı: ortadaki kareyi kırp
+    const side = Math.min(coverImg.width, coverImg.height * 0.75);
+    g.drawImage(coverImg, (coverImg.width - side) / 2, (coverImg.height - side) / 2, side, side, c - ir, c - ir, ir * 2, ir * 2);
+    g.restore();
+    g.strokeStyle = 'rgba(255,255,255,0.35)';
+    g.lineWidth = 4;
+    g.beginPath();
+    g.arc(c, c, ir, 0, Math.PI * 2);
+    g.stroke();
+  } else if (logoImg.complete && logoImg.naturalWidth) {
     const w = s * 0.62;
     const h = w * (logoImg.naturalHeight / logoImg.naturalWidth);
     g.save();
     g.globalCompositeOperation = 'screen';
-    g.drawImage(logoImg, c - w / 2, c - h - s * 0.05, w, h);
+    g.drawImage(logoImg, c - w / 2, c - h / 2, w, h);
     g.restore();
   }
+  circleText(g, 'SUNSHINE RADIO  ·  33⅓ RPM', c, c, s * 0.39, '600 34px "DM Sans", sans-serif', 'rgba(242,242,242,0.75)');
 
-  g.fillStyle = '#f2f2f2';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.font = '700 64px "DM Sans", sans-serif';
-  g.fillText('NO.1', c, c + s * 0.12);
-  g.font = '500 26px "DM Mono", monospace';
-  g.fillStyle = 'rgba(242,242,242,0.7)';
-  g.fillText('A  ·  33⅓', c, c + s * 0.19);
   // çalan şarkı: etiketin alt kenarında dönen yazı
   const t = (title || 'SİYAH BAYRAK').toLocaleUpperCase('tr');
   const short = t.length > 30 ? t.slice(0, 29) + '…' : t;
@@ -222,8 +231,14 @@ logoImg.onload = () => drawLabel();
 
 let labelToken = 0;
 function setTrack(videoId, title) {
-  labelToken++;
+  const token = ++labelToken;
+  coverImg = null;
   drawLabel(title || '');
+  if (!videoId) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => { if (token === labelToken) { coverImg = img; drawLabel(); } };
+  img.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 
 /* ---------------------------------------------------------
@@ -282,7 +297,7 @@ if (renderer) {
   scene.add(table);
 
   const WALL_Z = -3.8;
-  const WIN = { x0: -4.9, x1: 1.5, y0: 1.1, y1: 8.5 }; // pencere boşluğu
+  const WIN = { x0: -3.75, x1: 1.5, y0: 1.1, y1: 8.5 }; // pencere boşluğu
   const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: plasterTex, roughness: 0.95 });
   const frameMat = new THREE.MeshStandardMaterial({ color: 0xf6efe6, roughness: 0.5 });
   const wall = new THREE.Group();
@@ -681,31 +696,6 @@ if (renderer) {
     tt.add(hinge);
   }
 
-  // ön yüzde krom plaka: NO.1 · SİYAH BAYRAK
-  const plateCanvas = document.createElement('canvas');
-  plateCanvas.width = 1024;
-  plateCanvas.height = 110;
-  const drawPlate = () => {
-    const g = plateCanvas.getContext('2d');
-    const grad = g.createLinearGradient(0, 0, 0, 110);
-    grad.addColorStop(0, '#e4e6eb');
-    grad.addColorStop(1, '#9fa3ab');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 1024, 110);
-    g.fillStyle = '#0b0b0d';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.font = '700 60px "DM Sans", sans-serif';
-    g.fillText('NO.1  ·  SİYAH BAYRAK', 512, 58);
-    plateTex.needsUpdate = true;
-  };
-  const plateTex = new THREE.CanvasTexture(plateCanvas);
-  plateTex.colorSpace = THREE.SRGBColorSpace;
-  drawPlate();
-  document.fonts?.ready.then(drawPlate);
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.134), new THREE.MeshStandardMaterial({ map: plateTex, metalness: 0.85, roughness: 0.3 }));
-  plate.position.set(1.2, 0.44, 1.905);
-  tt.add(plate);
 
   /* ---------- Duvarda kanla çizilmiş gülen yüz (Red John imzası) ---------- */
   const tickers = []; // her karede çağrılan küçük animasyonlar
@@ -830,18 +820,19 @@ if (renderer) {
   leanDisc.position.set(0.55, 0.78, -0.03);
   lean.add(leanDisc);
 
+
   // Duvarda asılı siyah bayrak (rüzgârsız odada hafifçe dalgalanır)
   const flagLogo = new THREE.TextureLoader().load('siyahbayrak-logo.jpg');
   flagLogo.colorSpace = THREE.SRGBColorSpace;
   flagLogo.anisotropy = 8;
-  const FLAG_W = 2.3;
+  const FLAG_W = 3.1;
   const FLAG_H = FLAG_W * (640 / 1024) + 0.3;
   const flagGeo = new THREE.PlaneGeometry(FLAG_W, FLAG_H, 40, 20);
   const flagBase = flagGeo.attributes.position.array.slice();
-  const flagMat = new THREE.MeshStandardMaterial({ map: flagLogo, roughness: 0.9, side: THREE.DoubleSide });
+  const flagMat = new THREE.MeshStandardMaterial({ map: flagLogo, color: 0x5a5a5a, roughness: 0.95, side: THREE.DoubleSide }); // siyah kumaş ışıkta turuncuya kaçmasın
   flagLogo.repeat.set(1, 1);
   const flag = shadowy(new THREE.Mesh(flagGeo, flagMat));
-  flag.position.set(-6.0, 2.75, WALL_Z + T / 2 + 0.12);
+  flag.position.set(-5.45, 2.6, WALL_Z + T / 2 + 0.12);
   scene.add(flag);
   const rod = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, FLAG_W + 0.4, 12), chrome));
   rod.rotation.z = Math.PI / 2;
@@ -853,7 +844,7 @@ if (renderer) {
       const x = flagBase[i];
       const y = flagBase[i + 1];
       const hang = (FLAG_H / 2 - y) / FLAG_H; // üstten uzaklık: tepede sabit
-      p[i + 2] = hang * (Math.sin(x * 2.2 + t * 1.1) * 0.06 + Math.sin(x * 5.0 - t * 1.7 + y) * 0.02);
+      p[i + 2] = hang * (Math.sin(x * 1.8 + t * 1.1) * 0.08 + Math.sin(x * 5.0 - t * 1.7 + y) * 0.02);
     }
     flagGeo.attributes.position.needsUpdate = true;
     flagGeo.computeVertexNormals();
@@ -863,7 +854,7 @@ if (renderer) {
   const duckMat = new THREE.MeshPhysicalMaterial({ color: 0xffcf33, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2 });
   const duck = new THREE.Group();
   duck.position.set(-3.55, 0, -0.35);
-  duck.rotation.y = 0.9;
+  duck.rotation.y = -1.1; // yüzü kameraya dönük
   scene.add(duck);
   const dBody = shadowy(new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 24), duckMat));
   dBody.scale.set(1.25, 0.8, 1);
